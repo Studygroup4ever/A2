@@ -9,6 +9,18 @@ output: pdf_document
 knitr::opts_chunk$set(echo = TRUE)
 ```
 
+```{r}
+library(pacman)
+
+p_load(dagitty, tidyverse, rethinking, brms)
+
+```
+
+
+```{r}
+d <- read_csv("Ass2.csv")
+```
+
 ## Assignment 2 - Exploring causal inference issues
 
 In this assignment we explore some issues related to multiple regressions (regressions with more than one predictor), and inferred (causal) relations between variables. N.B. the data is simulated (to make sure I know the actual mechanism generating it), but it's based on a real study. So bear with a longish introduction to get into the details of what we are doing and why it is important.
@@ -35,6 +47,64 @@ The research questions you have to answer are the following:
 Q1.1) Does schizophrenia involve altercentric intrusion? Define model and priors. Test the implications of your priors (prior predictive checks) and if needed adjust them. Run the model. Test the quality of the fitted model (posterior predictive checks, prior-posterior updates). Assess the evidence in favor of an increased altercentric intrusion in schizophrenia. Report the model and the results, including plots.
 
 ```{r}
+dens(d$VoiceHearing)
+dens(d$MindReading)
+dens(d$Apathy)
+dens(d$AltercentricIntrusion)
+
+d %>% 
+  ggplot(aes(x = Diagnosis, y = AltercentricIntrusion)) +
+  geom_point() +
+  theme_minimal()
+
+d %>% 
+  ggplot(aes(x = Diagnosis, y = AltercentricIntrusion)) +
+  geom_point() +
+  theme_minimal()
+
+d %>% 
+  group_by(Diagnosis) %>% 
+  summarise(meanAlIn = mean(AltercentricIntrusion),
+            sdAlIn = sd(AltercentricIntrusion),
+            meanMR = mean(MindReading),
+            sdMR = sd(MindReading),
+            meanAlIn = mean(AltercentricIntrusion),
+            sdAlIn = sd(AltercentricIntrusion))
+
+```
+
+```{r}
+# Building models
+
+# Intercept
+ACI_f0 <- bf(Diagnosis ~ 1)
+
+# First model
+ACI_f1 <- bf(Diagnosis ~ 1 + AltercentricIntrusion)
+
+# Help getting priors
+get_prior(ACI_f0,
+          d,
+          family = gaussian)
+
+# Defining the priors
+ACI_p0 <- c(prior(normal(0, 1), class = Intercept),
+            prior(exponential(1), class = sigma))
+
+dens(rnorm(1e4, 0, 1))
+dens(rnorm(1e4, 1, 0.5))
+
+dens(rnorm(1e4, 0 + rnorm(1e4, 1, 0.5), 1))
+
+get_prior(CB_f1,
+          d,
+          family = gaussian)
+
+CB_p1 <- c(
+  prior(normal(0, 1), class = Intercept),
+  prior(normal(1, 0.5), class = sigma),
+  prior(normal(0, 0.2), class = b, coef = SR)
+)
 
 ```
 
