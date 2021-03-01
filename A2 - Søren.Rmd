@@ -47,10 +47,22 @@ The research questions you have to answer are the following:
 Q1.1) Does schizophrenia involve altercentric intrusion? Define model and priors. Test the implications of your priors (prior predictive checks) and if needed adjust them. Run the model. Test the quality of the fitted model (posterior predictive checks, prior-posterior updates). Assess the evidence in favor of an increased altercentric intrusion in schizophrenia. Report the model and the results, including plots.
 
 ```{r}
+# Scaling
+
+d <- d %>% mutate(
+  ACI = scale(AltercentricIntrusion),
+  MindRead = scale(MindReading),
+  APA = scale(Apathy),
+  VH = scale(VoiceHearing))
+
+```
+
+
+```{r}
 dens(d$VoiceHearing)
 dens(d$MindReading)
 dens(d$Apathy)
-dens(d$AltercentricIntrusion)
+dens(d$ACI)
 
 d %>% 
   ggplot(aes(x = Diagnosis, y = AltercentricIntrusion)) +
@@ -60,7 +72,8 @@ d %>%
 d %>% 
   ggplot(aes(x = Diagnosis, y = AltercentricIntrusion)) +
   geom_point() +
-  theme_minimal()
+  theme_minimal() + 
+  geom_smooth(method = 'lm')
 
 d %>% 
   group_by(Diagnosis) %>% 
@@ -76,11 +89,14 @@ d %>%
 ```{r}
 # Building models
 
-# Intercept
-ACI_f0 <- bf(Diagnosis ~ 1)
+# Intercept model
+ACI_f0 <- bf(ACI ~ 1)
 
 # First model
-ACI_f1 <- bf(Diagnosis ~ 1 + AltercentricIntrusion)
+ACI_f1 <- bf(ACI ~ 1 + Diagnosis)
+
+# No intercept model
+#ACI_f2 <- bf(ACI ~ -1 + Diagnosis)
 
 # Help getting priors
 get_prior(ACI_f0,
@@ -89,22 +105,38 @@ get_prior(ACI_f0,
 
 # Defining the priors
 ACI_p0 <- c(prior(normal(0, 1), class = Intercept),
-            prior(exponential(1), class = sigma))
+            prior(normal(0, 0.5), class = sigma))
 
+# Looking at the priors we have chosen
 dens(rnorm(1e4, 0, 1))
-dens(rnorm(1e4, 1, 0.5))
-
+dens(rnorm(1e4, 0, 0.5))
 dens(rnorm(1e4, 0 + rnorm(1e4, 1, 0.5), 1))
 
-get_prior(CB_f1,
+# Help getting priors
+get_prior(ACI_f1,
           d,
           family = gaussian)
 
-CB_p1 <- c(
-  prior(normal(0, 1), class = Intercept),
-  prior(normal(1, 0.5), class = sigma),
-  prior(normal(0, 0.2), class = b, coef = SR)
+# Defining the priors
+ACI_p1 <- c(
+  prior(normal(0, 0.5), class = Intercept),
+  prior(exponential(1), class = sigma),
+  prior(normal(0, 0.5), class = b, coef = Diagnosis))
+
+ACI_m1_prior <- brm(
+  formula = ACI_f1,
+  data = d,
+  family = gaussian,
+  prior = ACI_p1,
+  sample_prior="only",
+  backend="cmdstanr"
+  #threads = threading(2)
 )
+
+pp_check(ACI_m1_prior, nsamples=100)
+
+
+
 
 ```
 
