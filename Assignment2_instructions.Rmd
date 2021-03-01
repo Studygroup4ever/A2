@@ -1,0 +1,114 @@
+---
+title: "Assignment 2 - Causal inference"
+author: "RF"
+date: "2/5/2020"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## Assignment 2 - Exploring causal inference issues
+
+In this assignment we explore some issues related to multiple regressions (regressions with more than one predictor), and inferred (causal) relations between variables. N.B. the data is simulated (to make sure I know the actual mechanism generating it), but it's based on a real study. So bear with a longish introduction to get into the details of what we are doing and why it is important.
+
+### Altercentric intrusion in schizophrenia
+
+People with schizophrenia often report altered control and distinction of self-other representations: intrusive thoughts, hearing of voices, delusions of mind reading, paranoia, etc (a substantial portion of the psychotic symptoms experienced in schizophrenia). These have been variously attributed to hypermentalizing (over attribution of mental states to others), social impairment (over preoccupation with own thought processes), hyper socialization (inability to inhibit information from others), etc.
+
+The current study investigates 1) whether schizophrenia is indeed related to altered control and distinction of self-other representations, in particular altercentric intrusions (inability to inhibit social information), and 2) whether these are related to the relevant psychotic symptoms. N.B. the actual study also investigates egocentric intrusion, do check the papers below if interested.
+
+The task is a slightly modified version of this: https://www.ncbi.nlm.nih.gov/pubmed/20731512 (also what Nicole and Louise described in their guest talk) You look at a picture with some dots visible to you, as well as with a different person with a different set of dots visible to them. The number of dots you see and that the other sees can be the same (congruent condition) or not (incongruent condition). You are tasked to indicate whether a given number (e.g. 3) matches the number of dots you see (and the dots visible to the other person are irrelevant to the task).
+
+
+The tasks investigates altercentric intrusion: will your reaction time change according to whether the other person is seeing the same amount of dots as you, or not? The idea is that if you correctly inhibit social information, your reaction time should not change, as the information about the other person is not relevant. On the contrary, if you nevertheless use task irrelevant social information, you'll be slower at indicating whether 3 is the right number of dots when the other person sees a different amount of dots than you (conflicting information).
+The bigger the difference between RTs in the congruent and incongruent condition the bigger the altercentric intrusion effect.
+
+For each participant you have 6 variables: 1) ID, 2) AltercentricIntrusion (continuous score), 3) Diagnosis (schizophrenia vs. control), 4) VoiceHearing (severity of voice hearing symptoms, continuous score of the severity of the symptom as measured by a clinician), 5) MindReading (severity of delusions of mind reading, continuous score of the severity of the symptom as measured by a clinician); 6) Apathy (severity of lack of motivation in taking care of oneself, from washing to showing up at work, continuous score of the severity of the symptom as measured by a clinician). 
+N.B. Real clinical scores of symptoms would be on a likert scale, and altercentric intrusions would be on a slightly complex continuous scale. But life is too short for that shit, and we want to focus on multivariate models and causal inference, so all those variables in the assignment (but ID and Diagnosis) have been simulated as Gaussian distributions.
+
+The research questions you have to answer are the following:
+
+## First part
+
+Q1.1) Does schizophrenia involve altercentric intrusion? Define model and priors. Test the implications of your priors (prior predictive checks) and if needed adjust them. Run the model. Test the quality of the fitted model (posterior predictive checks, prior-posterior updates). Assess the evidence in favor of an increased altercentric intrusion in schizophrenia. Report the model and the results, including plots.
+
+```{r}
+
+```
+
+
+Q1.2) Is altercentric intrusion related to specific symptoms *in the patients*? Identify which of the symptoms could be relevant (given their description above). Should you include more than one symptom? Build models, priors, predictive checks. Assess the evidence and report models and results, including plots. Discuss whether the results make sense.
+
+
+```{r}
+
+```
+
+
+## Second part
+
+Q2.1) However, we know that the diagnosis is based on symptom assessment: if the overall sum of symptoms is severe enough, the participant gets a diagnosis. In other words, by selecting the patients, and including the symptoms in the model we might have inadvertently introduced an issue in our inference. Do try to draw a causal graph (Directed Acyclical Graph) of the variables and compare it with the types of causal graphs presented in the slides. Discuss which biases you might have introduced.
+
+Q2.2.) Redesign your analysis following the graph and report how the results change
+
+
+## Third part
+
+These issues are very difficult to think through, and not knowing the causal mechanisms generating the data in advance makes our inferences even more unreliable. To explore these issues, I recommend using simulations. In other words, defining a "true" model, generating data from it and assessing what different analyses would lead you to infer (and therefore which biases they might introduce). You can find the code I used to simulate your data below.
+
+Q3.1) Look through the code and identify whether the results you have match the underlying truth. Discuss what you have learned.
+
+Q3.2) OPTIONAL: is this a general pattern? Try varying the parameters (e.g. correlation values) and assess whether the new dataset(s) leads to the same biases in your analysis.
+
+
+
+```{r}
+pacman::p_load(MASS, tidyverse, psych)
+
+seed <- 1981 # Defining a seed so the results are always the same
+n <- 300 # Defining the amount of participants
+
+SymptomCorr <- .2 # Defining the correlation of symptoms (as they tend to co-occur)
+EffectCorrRel <- .2 # Defining the correlation between relevant symptoms and effect (Some symptoms are positively correlated with the effect)
+EffectCorrIrrel <- 0 # Defining the correlation between irrelevant symptoms and effect (none)
+
+# Creating the variance-covariance matrix for the variables we want to generate (3 symptoms, 1 effect)
+Sigma <- matrix(data=c(1,SymptomCorr,SymptomCorr,EffectCorrRel,
+                       SymptomCorr,1,SymptomCorr,EffectCorrRel,
+                       SymptomCorr,SymptomCorr,1,EffectCorrIrrel,
+                       EffectCorrRel,EffectCorrRel,EffectCorrIrrel,1),
+                       nrow=4,ncol=4)
+
+## Generate data from a multivariate (mvr) normal (n) distribution
+d <- mvrnorm(n = n, # number of participant
+        mu = c(1.2, 1.2, 1.2, 4), # mean of each variable
+        Sigma) # variance co-variance matrix
+
+# Giving meaningful names to variables and add ID
+d <- data.frame(
+  VoiceHearing = d[,1], 
+  MindReading =  d[,2],
+  Apathy =  d[,3], 
+  AltercentricIntrusion = d[,4],
+  ID = seq(nrow(d)))
+
+# Assessing whether the participant has schizophrenia (high enough sum of symptoms)
+# Here we choose participants scoring above 75% percentile (the most severe ones)
+d$Diagnosis <- 0
+d$Diagnosis[(d$VoiceHearing + d$MindReading + d$Apathy) > 
+              quantile(d$VoiceHearing + d$MindReading + d$Apathy, .75)] <- 1
+
+## Plotting the relation between variables all participants
+pairs.panels(dplyr::select(d,-Diagnosis, -ID))
+
+
+## Plotting the relation between variables in schizophrenia
+d1 <- d %>% subset(Diagnosis==1) %>% dplyr::select(-Diagnosis, -ID)
+pairs.panels(d1)
+
+
+write_csv(d, "data/Ass2.csv")
+```
+
