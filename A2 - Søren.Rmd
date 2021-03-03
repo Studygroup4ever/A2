@@ -48,11 +48,17 @@ The research questions you have to answer are the following:
 
 ## First part
 
-Q1.1) Does schizophrenia involve altercentric intrusion? Define model and priors. Test the implications of your priors (prior predictive checks) and if needed adjust them. Run the model. Test the quality of the fitted model (posterior predictive checks, prior-posterior updates). Assess the evidence in favor of an increased altercentric intrusion in schizophrenia. Report the model and the results, including plots.
+Q1.1) Does schizophrenia involve altercentric intrusion? 
+
+a) Define model and priors. 
+b) Test the implications of your priors (prior predictive checks) and if needed adjust them. 
+c) Run the model. 
+d) Test the quality of the fitted model (posterior predictive checks, prior-posterior updates). 
+e) Assess the evidence in favor of an increased altercentric intrusion in schizophrenia. 
+f) Report the model and the results, including plots.
 
 ```{r}
 # Scaling
-
 d <- d %>% mutate(
   ACI = scale(AltercentricIntrusion),
   MindRead = scale(MindReading),
@@ -94,7 +100,10 @@ d %>%
 
 ```
 
+##a) define model and priors
+
 ```{r}
+# Quap model with index variable
 m0.quap <- quap(
   alist(
     ACI ~ dnorm(mu, sigma),
@@ -109,13 +118,13 @@ precis(m0.quap, depth = 2)
 
 
 ```{r}
-# Building models
+# brms model with index variable
 
-# Intercept model
-ACI_f0 <- bf(ACI ~ Diagnosis)
+# Building models
+ACI_f0 <- bf(ACI ~ Diagnosis) # Is this how you would use index variables in brm? How do you interprete the outcome?
 
 # First model
-ACI_f1 <- bf(ACI ~ (1|Diagnosis))
+#ACI_f1 <- bf(ACI ~ (1|Diagnosis))
 
 # No intercept model
 #ACI_f2 <- bf(ACI ~ -1 + Diagnosis)
@@ -137,17 +146,19 @@ dens(rnorm(1e4, 0, 0.5))
 dens(rnorm(1e4, 0 + rnorm(1e4, 1, 0.5), 1))
 
 # Help getting priors
-get_prior(ACI_f1,
-          d,
-          family = gaussian)
-
-# Defining the priors
-ACI_p1 <- c(
-  prior(normal(0, 0.5), class = Intercept),
-  prior(exponential(1), class = sigma),
-  prior(normal(0, 0.5), class = b, coef = Diagnosis))
+# get_prior(ACI_f1,
+#           d,
+#           family = gaussian)
+# 
+# # Defining the priors
+# ACI_p1 <- c(
+#   prior(normal(0, 0.5), class = Intercept),
+#   prior(exponential(1), class = sigma),
+#   prior(normal(0, 0.5), class = b, coef = Diagnosis)
+# )
 ```
 
+## B) test implications
 
 ```{r}
 ACI_m0_prior <- brm(
@@ -161,6 +172,13 @@ ACI_m0_prior <- brm(
   #threads = threading(2)
 )
 
+(p1<-pp_check(ACI_m0_prior, nsamples=100))
+
+```
+
+##C) RUN THE MODEL
+
+```{r}
 ACI_m0 <- brm(
   formula = ACI_f0,
   data = d,
@@ -172,41 +190,43 @@ ACI_m0 <- brm(
   #threads = threading(2)
 )
 
-p1<-pp_check(ACI_m0_prior, nsamples=100)
-p2<-pp_check(ACI_m0, nsamples=100)
-p1 + p2
 ACI_m0
 
-
-ACI_m1_prior <- brm(
-  formula = ACI_f1,
-  data = d,
-  family = gaussian,
-  prior = ACI_p1,
-  file = "ACI_m1_prior"
-  sample_prior="only",
-  backend="cmdstanr"
-  #threads = threading(2)
-)
-
-ACI_m1 <- brm(
-  formula = ACI_f1,
-  data = d,
-  family = gaussian,
-  prior = ACI_p1,
-  file = "ACI_m1"
-  sample_prior=T,
-  backend="cmdstanr"
-  #threads = threading(2)
-)
-
-p1<-pp_check(ACI_m1_prior, nsamples=100)
-p2<-pp_check(ACI_m1, nsamples=100)
-p1 + p2
+# ACI_m1_prior <- brm(
+#   formula = ACI_f1,
+#   data = d,
+#   family = gaussian,
+#   prior = ACI_p1,
+#   file = "ACI_m1_prior"
+#   sample_prior = "only",
+#   backend = "cmdstanr"
+#   #threads = threading(2)
+# )
+# 
+# ACI_m1 <- brm(
+#   formula = ACI_f1,
+#   data = d,
+#   family = gaussian,
+#   prior = ACI_p1,
+#   file = "ACI_m1"
+#   sample_prior = T,
+#   backend = "cmdstanr"
+#   #threads = threading(2)
+# )
+# 
+# p1 <- pp_check(ACI_m1_prior, nsamples = 100)
+# p2 <- pp_check(ACI_m1, nsamples = 100)
+# p1 + p2
 
 ```
 
+# d) Test the quality of the fitted model (posterior predictive checks, prior-posterior updates). 
+
 ```{r}
+p1<-pp_check(ACI_m0_prior, nsamples=100)
+p2<-pp_check(ACI_m0, nsamples=100)
+p1 + p2
+
 posterior_m0 <- posterior_samples(ACI_m0)
 
 ggplot(posterior_m0) +
@@ -222,10 +242,12 @@ ggplot(posterior_m0) +
 ggplot(posterior_m0) +
   theme_classic() +
   geom_density(aes(prior_b_Diagnosis), fill="red", alpha=0.3) +
-  geom_density(aes(b_Diagnosis), fill="blue", alpha=0.5)
+  geom_density(aes(b_Diagnosis), fill="blue", alpha=0.5) +
+  geom_vline(xintercept = mean(posterior_m0$b_Diagnosis), lty=2, alpha = .7, color = 'darkblue')
 
 ```
 
+##e) Assess the evidence in favor of an increased altercentric intrusion in schizophrenia. 
 ```{r}
 conditional_effects(ACI_m0)
 
@@ -235,6 +257,10 @@ plot(conditional_effects(ACI_m0, spaghetti=T, nsamples=100, method = "fitted"), 
 
 plot(conditional_effects(ACI_m0, spaghetti=T, nsamples=100, method = "predict"), points=T)
 ```
+
+
+##f) Report the model and the results, including plots.
+
 
 ```{r}
 colnames(d)
