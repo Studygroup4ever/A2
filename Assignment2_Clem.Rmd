@@ -111,6 +111,11 @@ ACI_p1 <- c(
   prior(exponential(1), class = sigma),
   prior(normal(0, 0.5), class = b, coef = Diagnosis))
 
+ACI_p2 <- c(
+  prior(normal(0, 0.5), class = Intercept),
+  prior(exponential(1), class = sigma),
+  prior(normal(0, 1), class = b, coef = Diagnosis))
+
 ?prior
 
 ACI_m1_prior <- brm( #simulating from the prior
@@ -137,7 +142,7 @@ ACI_m1_post <- brm(
 )
 
 pp_check(ACI_m1_post, nsamples=100)
-
+?pp_check
 ## Posterior learning (against prior)
 
 posterior <- posterior_samples(ACI_m1_post)
