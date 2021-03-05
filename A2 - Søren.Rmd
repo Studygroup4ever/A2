@@ -64,7 +64,7 @@ d <- d %>% mutate(
   MindRead = scale(MindReading),
   APA = scale(Apathy),
   VH = scale(VoiceHearing),
-  Diagnosis = Diagnosis + 1)
+  Diagnosis = as.factor(Diagnosis + 1))
 
 ```
 
@@ -108,8 +108,8 @@ m0.quap <- quap(
   alist(
     ACI ~ dnorm(mu, sigma),
     mu <- a[Diagnosis],
-    a[Diagnosis] ~ dnorm(0,5),
-    sigma ~ dexp(1)
+    a[Diagnosis] ~ dnorm(0,0.5),
+    sigma ~ dnorm(1,0.5)
   ), data = d )
 
 precis(m0.quap, depth = 2)
@@ -121,13 +121,7 @@ precis(m0.quap, depth = 2)
 # brms model with index variable
 
 # Building models
-ACI_f0 <- bf(ACI ~ Diagnosis) # Is this how you would use index variables in brm? How do you interprete the outcome?
-
-# First model
-#ACI_f1 <- bf(ACI ~ (1|Diagnosis))
-
-# No intercept model
-#ACI_f2 <- bf(ACI ~ -1 + Diagnosis)
+ACI_f0 <- bf(ACI ~ 0 + Diagnosis) # Is this how you would use index variables in brm? How do you interprete the outcome?
 
 # Help getting priors
 get_prior(ACI_f0,
@@ -136,13 +130,14 @@ get_prior(ACI_f0,
 
 # Defining the priors
 ACI_p0 <- c(
-  prior(normal(0, 0.5), class = Intercept),
   prior(exponential(1), class = sigma),
-  prior(normal(0, 0.5), class = b, coef = Diagnosis))
+  prior(normal(0, 0.5), class = b, coef = Diagnosis1),
+  prior(normal(0, 0.5), class = b, coef = Diagnosis2))
 
 # Looking at the priors we have chosen
 dens(rnorm(1e4, 0, 1))
 dens(rnorm(1e4, 0, 0.5))
+
 dens(rnorm(1e4, 0 + rnorm(1e4, 1, 0.5), 1))
 
 # Help getting priors
@@ -166,13 +161,15 @@ ACI_m0_prior <- brm(
   data = d,
   family = gaussian,
   prior = ACI_p0,
-  file = "ACI_m0_prior",
+  #file = "ACI_m0_prior",
   sample_prior="only",
   backend="cmdstanr"
   #threads = threading(2)
 )
 
 (p1<-pp_check(ACI_m0_prior, nsamples=100))
+
+?pp_check
 
 ```
 
@@ -192,32 +189,6 @@ ACI_m0 <- brm(
 
 ACI_m0
 
-# ACI_m1_prior <- brm(
-#   formula = ACI_f1,
-#   data = d,
-#   family = gaussian,
-#   prior = ACI_p1,
-#   file = "ACI_m1_prior"
-#   sample_prior = "only",
-#   backend = "cmdstanr"
-#   #threads = threading(2)
-# )
-# 
-# ACI_m1 <- brm(
-#   formula = ACI_f1,
-#   data = d,
-#   family = gaussian,
-#   prior = ACI_p1,
-#   file = "ACI_m1"
-#   sample_prior = T,
-#   backend = "cmdstanr"
-#   #threads = threading(2)
-# )
-# 
-# p1 <- pp_check(ACI_m1_prior, nsamples = 100)
-# p2 <- pp_check(ACI_m1, nsamples = 100)
-# p1 + p2
-
 ```
 
 # d) Test the quality of the fitted model (posterior predictive checks, prior-posterior updates). 
@@ -228,22 +199,24 @@ p2<-pp_check(ACI_m0, nsamples=100)
 p1 + p2
 
 posterior_m0 <- posterior_samples(ACI_m0)
+colnames(posterior_m0)
 
 ggplot(posterior_m0) +
   theme_classic() +
-  geom_density(aes(prior_Intercept), fill="red", alpha=0.3) +
-  geom_density(aes(b_Intercept), fill="blue", alpha=0.5)
+  geom_density(aes(prior_b_Diagnosis1), fill="red", alpha=0.3) +
+  geom_density(aes(b_Diagnosis1), fill="blue", alpha=0.5) +
+  geom_vline(xintercept = mean(posterior_m0$b_Intercept), lty=2, alpha = .7, color = 'darkblue')
+
+ggplot(posterior_m0) +
+  theme_classic() +
+  geom_density(aes(prior_b_Diagnosis2), fill="red", alpha=0.3) +
+  geom_density(aes(b_Diagnosis2), fill="blue", alpha=0.5) +
+  geom_vline(xintercept = mean(posterior_m0$b_Diagnosis), lty=2, alpha = .7, color = 'darkblue')
 
 ggplot(posterior_m0) +
   theme_classic() +
   geom_density(aes(prior_sigma), fill="red", alpha=0.3) +
   geom_density(aes(sigma), fill="blue", alpha=0.5) 
-
-ggplot(posterior_m0) +
-  theme_classic() +
-  geom_density(aes(prior_b_Diagnosis), fill="red", alpha=0.3) +
-  geom_density(aes(b_Diagnosis), fill="blue", alpha=0.5) +
-  geom_vline(xintercept = mean(posterior_m0$b_Diagnosis), lty=2, alpha = .7, color = 'darkblue')
 
 ```
 
@@ -256,6 +229,9 @@ plot(conditional_effects(ACI_m0), points=T)
 plot(conditional_effects(ACI_m0, spaghetti=T, nsamples=100, method = "fitted"), points=T)
 
 plot(conditional_effects(ACI_m0, spaghetti=T, nsamples=100, method = "predict"), points=T)
+
+hypothesis(ACI_m0, "Diagnosis > 0") # what dis function?
+hypothesis(ACI_m0, "Intercept < 0")
 ```
 
 
