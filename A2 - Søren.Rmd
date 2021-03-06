@@ -340,7 +340,71 @@ pairs( ~ ACI + MindRead + APA + VH, data = d_sub,
 )
 ```
 
+APA + MindRead (+ VH)
 
+```{r}
+M12.1 <- quap(alist(
+  ACI ~ dnorm(mu, sigma),
+  mu <- b_APA * APA,
+  b_APA ~ dnorm(0, 1),
+  sigma ~ dnorm(1, 0.5)),
+  data = d_sub)
+
+M12.2 <- quap(alist(
+  ACI ~ dnorm(mu, sigma),
+  mu <- b_MR * MindRead,
+  b_MR ~ dnorm(0, 1),
+  sigma ~ dnorm(1, 0.5)),
+  data = d_sub)
+
+M12.3 <- quap(alist(
+  ACI ~ dnorm(mu, sigma),
+  mu <- b_MR * MindRead + b_APA * APA,
+  b_MR ~ dnorm(0, 1),
+  b_APA ~ dnorm(0, 1),
+  sigma ~ dnorm(1, 0.5)),
+  data = d_sub)
+```
+
+```{r}
+coef <- coeftab(M12.1, M12.2, M12.3)
+
+pre3.1 <- precis(M12.1, prob = .89)
+pre3.2 <- precis(M12.2, prob = .89)
+pre3.3 <- precis(M12.3, prob = .89)
+
+d_plot3 <- data.frame(beta = c(coef@coefs[1,], 
+                              coef@coefs[3,]),
+                     lower = c(pre3.1$`5.5%`[1], 
+                               NA, 
+                               pre3.3$`5.5%`[2], 
+                               NA, 
+                               pre3.2$`5.5%`[1], 
+                               pre3.3$`5.5%`[1]),
+                     upper = c(pre3.1$`94.5%`[1], 
+                               NA, 
+                               pre3.3$`94.5%`[2], 
+                               NA, 
+                               pre3.2$`94.5%`[1], 
+                               pre3.3$`94.5%`[1]), 
+                     model = c('M12.1', 'M12.2', 'M12.3', 'M12.1', 'M12.2', 'M12.3'),
+                     type = c('b_APA', 'b_APA', 'b_APA', 'b_MR', 'b_MR', 'b_MR'))
+
+
+d_plot3 %>% 
+  ggplot(aes(x = beta, y = model, color = type)) + 
+  geom_point() + 
+  geom_segment(aes(x = lower[1], xend = upper[1], 
+                   y = 1, yend = 1), color = 'red', alpha = .2) + 
+  geom_segment(aes(x = lower[3], xend = upper[3], 
+                   y = 3, yend = 3), color = 'red', alpha = .2) +
+  geom_segment(aes(x = lower[6], xend = upper[6],
+                   y = 3, yend = 3), alpha = .2) +
+  geom_segment(aes(x = lower[5], xend = upper[5], 
+                   y = 2, yend = 2), alpha = .2) + 
+  geom_vline(xintercept = 0, lty = 2, alpha = .5) +
+  theme_bw()
+```
 
 ## Second part
 
