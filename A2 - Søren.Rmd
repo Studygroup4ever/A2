@@ -12,7 +12,11 @@ knitr::opts_chunk$set(echo = TRUE)
 ```{r}
 library(pacman)
 
-p_load(dagitty, tidyverse, rethinking, brms)
+p_load(dagitty, 
+       tidyverse, 
+       rethinking, 
+       brms, 
+       patchwork)
 
 ```
 
@@ -44,13 +48,32 @@ The research questions you have to answer are the following:
 
 ## First part
 
-Q1.1) Does schizophrenia involve altercentric intrusion? Define model and priors. Test the implications of your priors (prior predictive checks) and if needed adjust them. Run the model. Test the quality of the fitted model (posterior predictive checks, prior-posterior updates). Assess the evidence in favor of an increased altercentric intrusion in schizophrenia. Report the model and the results, including plots.
+Q1.1) Does schizophrenia involve altercentric intrusion? 
+
+a) Define model and priors. 
+b) Test the implications of your priors (prior predictive checks) and if needed adjust them. 
+c) Run the model. 
+d) Test the quality of the fitted model (posterior predictive checks, prior-posterior updates). 
+e) Assess the evidence in favor of an increased altercentric intrusion in schizophrenia. 
+f) Report the model and the results, including plots.
+
+```{r}
+# Scaling
+d <- d %>% mutate(
+  ACI = scale(AltercentricIntrusion),
+  MindRead = scale(MindReading),
+  APA = scale(Apathy),
+  VH = scale(VoiceHearing),
+  Diagnosis = as.factor(Diagnosis + 1))
+
+```
+
 
 ```{r}
 dens(d$VoiceHearing)
 dens(d$MindReading)
 dens(d$Apathy)
-dens(d$AltercentricIntrusion)
+dens(d$ACI)
 
 d %>% 
   ggplot(aes(x = Diagnosis, y = AltercentricIntrusion)) +
@@ -60,7 +83,8 @@ d %>%
 d %>% 
   ggplot(aes(x = Diagnosis, y = AltercentricIntrusion)) +
   geom_point() +
-  theme_minimal()
+  theme_minimal() + 
+  geom_smooth(method = 'lm')
 
 d %>% 
   group_by(Diagnosis) %>% 
@@ -68,19 +92,36 @@ d %>%
             sdAlIn = sd(AltercentricIntrusion),
             meanMR = mean(MindReading),
             sdMR = sd(MindReading),
-            meanAlIn = mean(AltercentricIntrusion),
-            sdAlIn = sd(AltercentricIntrusion))
+            meanVH = mean(VoiceHearing),
+            sdVH = sd(VoiceHearing),
+            meanAPA = mean(Apathy),
+            sdAPA = sd(Apathy)) %>% 
+  t()
 
 ```
 
+##a) define model and priors
+
 ```{r}
+# Quap model with index variable
+m0.quap <- quap(
+  alist(
+    ACI ~ dnorm(mu, sigma),
+    mu <- a[Diagnosis],
+    a[Diagnosis] ~ dnorm(0,0.5),
+    sigma ~ dnorm(1,0.5)
+  ), data = d )
+
+precis(m0.quap, depth = 2)
+```
+
+
+
+```{r}
+# brms model with index variable
+
 # Building models
-
-# Intercept
-ACI_f0 <- bf(Diagnosis ~ 1)
-
-# First model
-ACI_f1 <- bf(Diagnosis ~ 1 + AltercentricIntrusion)
+ACI_f0 <- bf(ACI ~ 0 + Diagnosis) # Is this how you would use index variables in brm? How do you interprete the outcome?
 
 # Help getting priors
 get_prior(ACI_f0,
@@ -88,23 +129,159 @@ get_prior(ACI_f0,
           family = gaussian)
 
 # Defining the priors
-ACI_p0 <- c(prior(normal(0, 1), class = Intercept),
-            prior(exponential(1), class = sigma))
+ACI_p0 <- c(
+  prior(normal(0, 1), class = b, coef = Diagnosis1),
+  prior(normal(0, 1), class = b, coef = Diagnosis2),
+  prior(normal(1, 0.5), class = sigma))
 
+# Looking at the priors we have chosen
 dens(rnorm(1e4, 0, 1))
-dens(rnorm(1e4, 1, 0.5))
+dens(rnorm(1e4, 0, 0.5))
 
 dens(rnorm(1e4, 0 + rnorm(1e4, 1, 0.5), 1))
 
-get_prior(CB_f1,
-          d,
-          family = gaussian)
+# Help getting priors
+# get_prior(ACI_f1,
+#           d,
+#           family = gaussian)
+# 
+# # Defining the priors
+# ACI_p1 <- c(
+#   prior(normal(0, 0.5), class = Intercept),
+#   prior(exponential(1), class = sigma),
+#   prior(normal(0, 0.5), class = b, coef = Diagnosis)
+# )
+```
 
-CB_p1 <- c(
-  prior(normal(0, 1), class = Intercept),
-  prior(normal(1, 0.5), class = sigma),
-  prior(normal(0, 0.2), class = b, coef = SR)
+## B) test implications
+
+```{r}
+ACI_m0_prior <- brm(
+  formula = ACI_f0,
+  data = d,
+  family = gaussian,
+  prior = ACI_p0,
+  #file = "ACI_m0_prior",
+  sample_prior="only",
+  backend="cmdstanr"
+  #threads = threading(2)
 )
+
+p1 <- pp_check(ACI_m0_prior, nsamples=100) 
+
+p1$labels$x <- "Altercentric Intrusion (std)"
+p1$labels$y <- "Density"
+p1$labels$title <- "Prior Predictive Check"
+
+p1
+
+```
+
+##C) RUN THE MODEL
+
+```{r}
+ACI_m0 <- brm(
+  formula = ACI_f0,
+  data = d,
+  family = gaussian,
+  prior = ACI_p0,
+  #file = "ACI_m0",
+  sample_prior=T,
+  backend="cmdstanr"
+  #threads = threading(2)
+)
+
+ACI_m0
+
+```
+
+# d) Test the quality of the fitted model (posterior predictive checks, prior-posterior updates). 
+
+```{r}
+#p1<-pp_check(ACI_m0_prior, nsamples=100)
+p2<-pp_check(ACI_m0, nsamples=100)
+
+p2$labels$x <- "Altercentric Intrusion (std)"
+p2$labels$y <- "Density"
+p2$labels$title <- "Posterior Predictive Check"
+
+p1 + p2
+
+posterior_m0 <- posterior_samples(ACI_m0)
+colnames(posterior_m0)
+
+
+
+height.diag1 <- density(
+  posterior_m0$b_Diagnosis1)$y[which.max(density(posterior_m0$b_Diagnosis1)$y)]
+height.diag2 <- density(
+  posterior_m0$b_Diagnosis2)$y[which.max(density(posterior_m0$b_Diagnosis2)$y)]
+height.sigma <- density(
+  posterior_m0$sigma)$y[which.max(density(posterior_m0$sigma)$y)]
+                 
+ggplot(posterior_m0) +
+  theme_classic() +
+  geom_density(aes(prior_b_Diagnosis1), fill="red", alpha=0.3) +
+  geom_density(aes(b_Diagnosis1), fill="blue", alpha=0.5) +
+  labs(x = 'Altercentric Intrusion',
+       y = 'Density',
+       title = 'Prior-Posterior Update for Control') +
+  annotate("text", x = mean(posterior_m0$b_Diagnosis1) - 1.5, y = height.diag1 * .8, 
+             label = as.character(paste0(
+               "mean = ", round(mean(posterior_m0$b_Diagnosis1),4), sep = " "), parse = TRUE)) +
+  geom_vline(xintercept = mean(posterior_m0$b_Diagnosis1), lty=2, alpha = .7, color = 'darkblue') +
+
+ggplot(posterior_m0) +
+  theme_classic() +
+  geom_density(aes(prior_b_Diagnosis2), fill="red", alpha=0.3) +
+  geom_density(aes(b_Diagnosis2), fill="blue", alpha=0.5) +
+  labs(x = 'Altercentric Intrusion',
+       y = 'Density',
+       title = 'Prior-Posterior Update for Schizophrenic Patients') +
+  annotate("text", x = mean(posterior_m0$b_Diagnosis2) - 1.5, y = height.diag2 * .8, 
+             label = as.character(paste0(
+               "mean = ", round(mean(posterior_m0$b_Diagnosis2), 4), sep = " "), parse = TRUE)) +
+  geom_vline(xintercept = mean(posterior_m0$b_Diagnosis2), lty=2, alpha = .7, color = 'darkblue') +
+  
+ggplot(posterior_m0) +
+  theme_classic() +
+  geom_density(aes(prior_sigma), fill="red", alpha=0.3) +
+  geom_density(aes(sigma), fill="blue", alpha=0.5) +
+  labs(x = 'Model Error',
+       y = 'Density',
+       title = 'Prior-Posterior Update for Model Error') +
+  annotate("text", x = mean(posterior_m0$sigma) - .5, y = height.sigma * .8, 
+             label = as.character(paste0(
+               "mean = ", round(mean(posterior_m0$sigma), 4), sep = " "), parse = TRUE)) +
+  geom_vline(xintercept = mean(posterior_m0$sigma), lty=2, alpha = .7, color = 'darkblue') 
+
+```
+
+##e) Assess the evidence in favor of an increased altercentric intrusion in schizophrenia. 
+```{r}
+conditional_effects(ACI_m0)
+
+plot(conditional_effects(ACI_m0), points=T)
+
+plot(conditional_effects(ACI_m0, spaghetti=T, nsamples=100, method = "fitted"), points=T)
+
+plot(conditional_effects(ACI_m0, spaghetti=T, nsamples=100, method = "predict"), points=T)
+
+h1 <- hypothesis(ACI_m0, "Diagnosis1 = Diagnosis2")
+h2 <- hypothesis(ACI_m0, "Diagnosis1 > Diagnosis2")
+h3 <- hypothesis(ACI_m0, "Diagnosis1 < Diagnosis2")
+
+rbind(h1$hypothesis, h2$hypothesis, h3$hypothesis)
+
+
+
+```
+
+
+##f) Report the model and the results, including plots.
+
+
+```{r}
 
 ```
 
@@ -113,9 +290,121 @@ Q1.2) Is altercentric intrusion related to specific symptoms *in the patients*? 
 
 
 ```{r}
+reg <- function(x, y, col) abline(lm(y ~ x), col = col)
 
+panel.lm <-
+  function (x, y, col = par("col"), bg = NA, pch = par("pch"), 
+            cex = 1, col.smooth = "red", span = 2 / 3, iter = 3, ...)  {
+    points(x, y, pch = pch, col = col, bg = bg, cex = cex)
+    ok <- is.finite(x) & is.finite(y)
+    if (any(ok)) 
+      reg(x[ok], y[ok], col.smooth)
+  }
+
+panel.cor <- function(x, y, digits = 2, prefix = "", cex.cor, ...) {
+  usr <- par("usr")
+  on.exit(par(usr))
+  par(usr = c(0, 1, 0, 1))
+  r <- cor(x, y)
+  txt <- format(c(r, 0.123456789), digits = digits)[1]
+  txt <- paste0(prefix, txt)
+  text(0.5, 0.5, txt, cex = 1.1, font = 4)
+}
 ```
 
+```{r}
+d_sub <- d %>% filter(Diagnosis == 2)
+
+#pairs(~ ACI + MindRead + APA + VH + Diagnosis, data = d, col = rangi2)
+
+#pairs(~ ACI + MindRead + APA + VH, data = d_sub, col = rangi2, lower.panel = panel.cor)
+
+pairs( ~ ACI + MindRead + APA + VH + Diagnosis, data = d,
+  panel = panel.lm,
+  cex = 1.5,
+  pch = 19,
+  col = adjustcolor(4, .4),
+  cex.labels = 2,
+  font.labels = 2,
+  lower.panel = panel.cor
+)
+
+pairs( ~ ACI + MindRead + APA + VH, data = d_sub,
+  panel = panel.lm,
+  cex = 1.5,
+  pch = 19,
+  col = adjustcolor(4, .4),
+  cex.labels = 2,
+  font.labels = 2,
+  lower.panel = panel.cor
+)
+```
+
+APA + MindRead (+ VH)
+
+```{r}
+M12.1 <- quap(alist(
+  ACI ~ dnorm(mu, sigma),
+  mu <- b_APA * APA,
+  b_APA ~ dnorm(0, 1),
+  sigma ~ dnorm(1, 0.5)),
+  data = d_sub)
+
+M12.2 <- quap(alist(
+  ACI ~ dnorm(mu, sigma),
+  mu <- b_MR * MindRead,
+  b_MR ~ dnorm(0, 1),
+  sigma ~ dnorm(1, 0.5)),
+  data = d_sub)
+
+M12.3 <- quap(alist(
+  ACI ~ dnorm(mu, sigma),
+  mu <- b_MR * MindRead + b_APA * APA,
+  b_MR ~ dnorm(0, 1),
+  b_APA ~ dnorm(0, 1),
+  sigma ~ dnorm(1, 0.5)),
+  data = d_sub)
+```
+
+```{r}
+coef <- coeftab(M12.1, M12.2, M12.3)
+
+pre3.1 <- precis(M12.1, prob = .89)
+pre3.2 <- precis(M12.2, prob = .89)
+pre3.3 <- precis(M12.3, prob = .89)
+
+d_plot3 <- data.frame(beta = c(coef@coefs[1,], 
+                              coef@coefs[3,]),
+                     lower = c(pre3.1$`5.5%`[1], 
+                               NA, 
+                               pre3.3$`5.5%`[2], 
+                               NA, 
+                               pre3.2$`5.5%`[1], 
+                               pre3.3$`5.5%`[1]),
+                     upper = c(pre3.1$`94.5%`[1], 
+                               NA, 
+                               pre3.3$`94.5%`[2], 
+                               NA, 
+                               pre3.2$`94.5%`[1], 
+                               pre3.3$`94.5%`[1]), 
+                     model = c('M12.1', 'M12.2', 'M12.3', 'M12.1', 'M12.2', 'M12.3'),
+                     type = c('b_APA', 'b_APA', 'b_APA', 'b_MR', 'b_MR', 'b_MR'))
+
+
+d_plot3 %>% 
+  ggplot(aes(x = beta, y = model, color = type)) + 
+  geom_point() + 
+  geom_segment(aes(x = lower[1], xend = upper[1], 
+                   y = 1, yend = 1), color = 'red', alpha = .2) + 
+  geom_segment(aes(x = lower[3], xend = upper[3], 
+                   y = 3, yend = 3), color = 'red', alpha = .2) +
+  geom_segment(aes(x = lower[6], xend = upper[6],
+                   y = 3, yend = 3), alpha = .2) +
+  geom_segment(aes(x = lower[5], xend = upper[5], 
+                   y = 2, yend = 2), alpha = .2) + 
+  geom_vline(xintercept = 0, lty = 2, alpha = .5) +
+  theme_bw()
+```
 
 ## Second part
 
