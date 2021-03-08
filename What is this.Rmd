@@ -64,7 +64,7 @@ get_prior(Model,  data, family = gaussian)
 
 # Defining priors
 prior_def <- c(
-  prior(exponential(1), class = sigma),
+  prior(normal(1,0.5), class = sigma),
   prior(normal(0,0.5), class = b)
 )
 
@@ -114,7 +114,8 @@ ggplot(aes(x = a, y = d)) +
        y = "ALtercentric intrusion (std)") +
   coord_cartesian(ylim = c(-2, 2)) +
   theme_bw() +
-  theme(panel.grid = element_blank()) 
+  theme(panel.grid = element_blank()) +
+  ggtitle("Possible slopes based on priors beta = normal(0,0.5) & sigma = normal(1,0.5)")
 
 ```
 ```{r}
@@ -198,11 +199,10 @@ data %>%
 Given that altercentric intrusion is when the patient has trouble filtering out the perspective of other people, "mindreading" may be a symptom related to this phenomena. Potentially "voice-hearing" could be a symptom too, as it might interfere with the perspective of the patient in the task. Apathy might not be a relevant symptom for this investigation
 
 ACI_i ~ Normal(mu_i,SD)
-mu_i = alpha + beta1 * VH_i + beta2 * MR_i
-alpha ~ Normal(0,1)
+mu_i = beta1 * VH_i + beta2 * MR_i
 beta1 ~ Normal(0,0.5)
 beta2 ~ Normal(0,0.5)
-SD ~ Exponential(1)
+sigma ~ Normal(1, 0.5)
 
 ```{r}
 # Subsetting the data to include only patients with schizophrenia
@@ -223,8 +223,8 @@ First we plot each individudal predictor and then we plot both, to see if one of
 # Voicehearing
 ModelVH <- bf(ACI_scale ~ 0 + VH_scale)
 
-prior_defVH <- c(prior(exponential(1), class = sigma),
-  prior(normal(0,0.2), class = b))
+prior_defVH <- c(prior(normal(1,0.5), class = sigma),
+  prior(normal(0,0.5), class = b))
 
 # Specifiying a model for assessing the priors
 model_priorVH <- brm(
@@ -270,8 +270,8 @@ print(modelVH)
 
 ModelMR <- bf(ACI_scale ~ 0 + MR_scale)
 
-prior_defMR <- c(prior(exponential(1), class = sigma),
-  prior(normal(0,0.2), class = b))
+prior_defMR <- c(prior(normal(1,0.5), class = sigma),
+  prior(normal(0,0.5), class = b))
 
 # Specifiying a model for assessing the priors
 model_priorMR <- brm(
@@ -308,7 +308,7 @@ posteriorMR <- posterior_samples(modelMR)
 mean(posteriorMR$b_MR_scale)
 sd(posteriorMR$b_MR_scale)
 
-print(modelVH)
+print(modelMR)
 ```
 
 Both predictors included
@@ -321,8 +321,8 @@ get_prior(Model4,  data_2, family = gaussian)
 
 # Defining priors
 prior_def4 <- c(
-  prior(exponential(1), class = sigma),
-  prior(normal(0,0.2), class = b)
+  prior(normal(1,0.5), class = sigma),
+  prior(normal(0,0.5), class = b)
 )
 
 # Specifiying a model for assessing the priors
@@ -389,7 +389,7 @@ ggplot(data_2) +
 
 print(model4)
 
-¨
+
 ```
 
 
