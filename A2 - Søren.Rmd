@@ -134,6 +134,11 @@ ACI_p0 <- c(
   prior(normal(0, 1), class = b, coef = Diagnosis2),
   prior(normal(1, 0.5), class = sigma))
 
+ACI_p1 <- c(
+  prior(normal(0, 0.5), class = b, coef = Diagnosis1),
+  prior(normal(0, 0.5), class = b, coef = Diagnosis2),
+  prior(normal(1, 0.5), class = sigma))
+
 # Looking at the priors we have chosen
 dens(rnorm(1e4, 0, 1))
 dens(rnorm(1e4, 0, 0.5))
@@ -167,13 +172,35 @@ ACI_m0_prior <- brm(
   #threads = threading(2)
 )
 
+ACI_m1_prior <- brm(
+  formula = ACI_f0,
+  data = d,
+  family = gaussian,
+  prior = ACI_p1,
+  #file = "ACI_m1_prior",
+  sample_prior="only",
+  backend="cmdstanr"
+  #threads = threading(2)
+)
+
+ACI_m1_prior
+
 p1 <- pp_check(ACI_m0_prior, nsamples=100) 
 
 p1$labels$x <- "Altercentric Intrusion (std)"
 p1$labels$y <- "Density"
-p1$labels$title <- "Prior Predictive Check"
+p1$labels$title <- "Prior Predictive Check m0"
 
 p1
+
+p1_m1 <- pp_check(ACI_m0_prior, nsamples=100) 
+
+p1_m1$labels$x <- "Altercentric Intrusion (std)"
+p1_m1$labels$y <- "Density"
+p1_m1$labels$title <- "Prior Predictive Check m1"
+
+p1 + p1_m1
+
 
 ```
 
@@ -193,6 +220,19 @@ ACI_m0 <- brm(
 
 ACI_m0
 
+ACI_m1 <- brm(
+  formula = ACI_f0,
+  data = d,
+  family = gaussian,
+  prior = ACI_p1,
+  #file = "ACI_m0",
+  sample_prior=T,
+  backend="cmdstanr"
+  #threads = threading(2)
+)
+
+ACI_m1
+
 ```
 
 # d) Test the quality of the fitted model (posterior predictive checks, prior-posterior updates). 
@@ -207,6 +247,18 @@ p2$labels$title <- "Posterior Predictive Check"
 
 p1 + p2
 
+#p1_m1<-pp_check(ACI_m0_prior, nsamples=100)
+p2_m1<-pp_check(ACI_m1, nsamples=100)
+
+p2_m1$labels$x <- "Altercentric Intrusion (std)"
+p2_m1$labels$y <- "Density"
+p2_m1$labels$title <- "Posterior Predictive Check m1"
+
+p1_m1 + p2_m1
+```
+
+
+```{r}
 posterior_m0 <- posterior_samples(ACI_m0)
 colnames(posterior_m0)
 
@@ -257,6 +309,59 @@ ggplot(posterior_m0) +
 
 ```
 
+```{r}
+posterior_m1 <- posterior_samples(ACI_m1)
+colnames(posterior_m1)
+
+
+
+height.diag1 <- density(
+  posterior_m1$b_Diagnosis1)$y[which.max(density(posterior_m1$b_Diagnosis1)$y)]
+height.diag2 <- density(
+  posterior_m1$b_Diagnosis2)$y[which.max(density(posterior_m1$b_Diagnosis2)$y)]
+height.sigma <- density(
+  posterior_m1$sigma)$y[which.max(density(posterior_m1$sigma)$y)]
+                 
+ggplot(posterior_m1) +
+  theme_classic() +
+  geom_density(aes(prior_b_Diagnosis1), fill="red", alpha=0.3) +
+  geom_density(aes(b_Diagnosis1), fill="blue", alpha=0.5) +
+  labs(x = 'Altercentric Intrusion',
+       y = 'Density',
+       title = 'Prior-Posterior Update for Control') +
+  annotate("text", x = mean(posterior_m1$b_Diagnosis1) - 0.5, y = height.diag1 * .8, 
+             label = as.character(paste0(
+               "mean = ", round(mean(posterior_m1$b_Diagnosis1),4), sep = " "), parse = TRUE)) +
+  geom_vline(xintercept = mean(posterior_m1$b_Diagnosis1), lty=2, alpha = .7, color = 'darkblue') +
+
+ggplot(posterior_m1) +
+  theme_classic() +
+  geom_density(aes(prior_b_Diagnosis2), fill="red", alpha=0.3) +
+  geom_density(aes(b_Diagnosis2), fill="blue", alpha=0.5) +
+  labs(x = 'Altercentric Intrusion',
+       y = 'Density',
+       title = 'Prior-Posterior Update for Schizophrenic Patients') +
+  annotate("text", x = mean(posterior_m1$b_Diagnosis2) - 1, y = height.diag2 * .8, 
+             label = as.character(paste0(
+               "mean = ", round(mean(posterior_m1$b_Diagnosis2), 4), sep = " "), parse = TRUE)) +
+  geom_vline(xintercept = mean(posterior_m1$b_Diagnosis2), lty=2, alpha = .7, color = 'darkblue') +
+  
+ggplot(posterior_m1) +
+  theme_classic() +
+  geom_density(aes(prior_sigma), fill="red", alpha=0.3) +
+  geom_density(aes(sigma), fill="blue", alpha=0.5) +
+  labs(x = 'Model Error',
+       y = 'Density',
+       title = 'Prior-Posterior Update for Model Error') +
+  annotate("text", x = mean(posterior_m1$sigma) - .5, y = height.sigma * .8, 
+             label = as.character(paste0(
+               "mean = ", round(mean(posterior_m1$sigma), 4), sep = " "), parse = TRUE)) +
+  geom_vline(xintercept = mean(posterior_m1$sigma), lty=2, alpha = .7, color = 'darkblue') 
+
+```
+
+
+
 ##e) Assess the evidence in favor of an increased altercentric intrusion in schizophrenia. 
 ```{r}
 conditional_effects(ACI_m0)
@@ -270,6 +375,23 @@ plot(conditional_effects(ACI_m0, spaghetti=T, nsamples=100, method = "predict"),
 h1 <- hypothesis(ACI_m0, "Diagnosis1 = Diagnosis2")
 h2 <- hypothesis(ACI_m0, "Diagnosis1 > Diagnosis2")
 h3 <- hypothesis(ACI_m0, "Diagnosis1 < Diagnosis2")
+
+rbind(h1$hypothesis, h2$hypothesis, h3$hypothesis)
+```
+
+
+```{r}
+conditional_effects(ACI_m1)
+
+plot(conditional_effects(ACI_m1), points=T)
+
+plot(conditional_effects(ACI_m1, spaghetti=T, nsamples=100, method = "fitted"), points=T)
+
+plot(conditional_effects(ACI_m1, spaghetti=T, nsamples=100, method = "predict"), points=T)
+
+(h1 <- hypothesis(ACI_m1, "Diagnosis1 = Diagnosis2"))
+(h2 <- hypothesis(ACI_m1, "Diagnosis1 > Diagnosis2"))
+(h3 <- hypothesis(ACI_m1, "Diagnosis1 < Diagnosis2"))
 
 rbind(h1$hypothesis, h2$hypothesis, h3$hypothesis)
 
@@ -329,6 +451,7 @@ pairs( ~ ACI + MindRead + APA + VH + Diagnosis, data = d,
   lower.panel = panel.cor
 )
 
+
 pairs( ~ ACI + MindRead + APA + VH, data = d_sub,
   panel = panel.lm,
   cex = 1.5,
@@ -338,6 +461,7 @@ pairs( ~ ACI + MindRead + APA + VH, data = d_sub,
   font.labels = 2,
   lower.panel = panel.cor
 )
+
 ```
 
 APA + MindRead (+ VH)
@@ -405,6 +529,115 @@ d_plot3 %>%
   geom_vline(xintercept = 0, lty = 2, alpha = .5) +
   theme_bw()
 ```
+
+```{r}
+mid<-mean(d$ACI)
+
+d %>% 
+  ggplot(aes(x = APA, y = ACI, color = Diagnosis)) +
+  geom_point() +
+  #scale_color_gradient2(midpoint=mid, low="yellow", mid="red", high="black", space ="Lab" ) +
+  geom_smooth(method = 'lm') +
+  theme_minimal() 
+
+d %>% 
+  ggplot(aes(x = MindRead, y = ACI, color = Diagnosis)) +
+  geom_point() +
+  #scale_color_gradient2(midpoint=mid, low="yellow", mid="red", high="black", space ="Lab" ) +
+  geom_smooth(method = 'lm') +
+  theme_minimal() 
+
+d %>% 
+  ggplot(aes(x = VH, y = ACI, color = Diagnosis)) +
+  geom_point() +
+  #scale_color_gradient2(midpoint=mid, low="yellow", mid="red", high="black", space ="Lab" ) +
+  geom_smooth(method = 'lm') +
+  theme_minimal() 
+
+
+d %>% 
+  ggplot(aes(x = MindRead, y = APA, color = VH, shape = Diagnosis, size = exp(ACI))) +
+  geom_point() +
+  scale_color_gradient2(midpoint=mid, low="lightblue", mid="red", high="black", space ="Lab" ) +
+  geom_smooth(method = 'lm') +
+  theme_minimal() 
+
+```
+
+```{r}
+dagS1 <- dagitty("dag {
+Unobserved -> Apathy
+Unobserved -> Mind.Reading
+Unobserved -> Voice.Hearing
+Voice.Hearing -> Sum.of.Symptoms
+Mind.Reading -> Sum.of.Symptoms
+Apathy -> Sum.of.Symptoms
+Sum.of.Symptoms -> Dignosis
+Voice.Hearing -> Altercentric.Intrusion
+Mind.Reading -> Altercentric.Intrusion
+Apathy -> Altercentric.Intrusion
+}")
+
+coordinates(dagS1) <- list(
+  x = c(
+    Unobserved = 1,
+    Apathy = 0,
+    Mind.Reading = 1,
+    Voice.Hearing = 2,
+    Sum.of.Symptoms = 1,
+    Dignosis = 1,
+    Altercentric.Intrusion = 2
+  ),
+  y = c(
+    Unobserved = 1,
+    Apathy = 2,
+    Mind.Reading = 2,
+    Voice.Hearing = 2,
+    Sum.of.Symptoms = 3,
+    Dignosis = 4,
+    Altercentric.Intrusion = 3
+  )
+)
+
+drawdag(dagS1)
+
+dagS2 <- dagitty("dag {
+Unobserved -> Apathy
+Unobserved -> Mind.Reading
+Unobserved -> Voice.Hearing
+Voice.Hearing -> Sum.of.Symptoms
+Mind.Reading -> Sum.of.Symptoms
+Apathy -> Sum.of.Symptoms
+Sum.of.Symptoms -> Dignosis
+Voice.Hearing -> Altercentric.Intrusion
+Mind.Reading -> Altercentric.Intrusion
+}")
+
+coordinates(dagS2) <- list(
+  x = c(
+    Unobserved = 1,
+    Apathy = 0,
+    Mind.Reading = 1,
+    Voice.Hearing = 2,
+    Sum.of.Symptoms = 1,
+    Dignosis = 1,
+    Altercentric.Intrusion = 2
+  ),
+  y = c(
+    Unobserved = 1,
+    Apathy = 2,
+    Mind.Reading = 2,
+    Voice.Hearing = 2,
+    Sum.of.Symptoms = 3,
+    Dignosis = 4,
+    Altercentric.Intrusion = 3
+  )
+)
+
+drawdag(dagS2) 
+
+```
+
 
 ## Second part
 
