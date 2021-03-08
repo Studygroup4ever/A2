@@ -205,17 +205,97 @@ beta2 ~ Normal(0,0.5)
 sigma ~ Normal(1, 0.5)
 
 ```{r}
+## Scaling variables
+data$VH_scale <- scale(data$VoiceHearing)
+data$MR_scale <- scale(data$MindReading)
+data$APA_scale <- scale(data$Apathy)
+
+
 # Subsetting the data to include only patients with schizophrenia
 
 data_2 <- data %>% 
   subset(Diagnosis == 2)
 
-## Scaling variables
-data_2$VH_scale <- scale(data_2$VoiceHearing)
-data_2$MR_scale <- scale(data_2$MindReading)
+
 ```
 
-First we plot each individudal predictor and then we plot both, to see if one of the two loses any variance when both are included
+### Apathy
+
+```{r}
+## Creating model with each predictor to see how much they explain
+
+# Voicehearing
+ModelAPA <- bf(ACI_scale ~ 0 + APA_scale)
+
+prior_defAPA <- c(prior(normal(1,0.5), class = sigma),
+  prior(normal(0,0.5), class = b))
+
+# Specifiying a model for assessing the priors
+model_priorAPA <- brm(
+  formula = ModelAPA,
+  data = data_2,
+  family = gaussian,
+  prior = prior_defAPA,
+  sample_prior="only",
+  file = "model_prior",
+  backend="cmdstanr",
+  threads = threading(2)
+)
+
+# Checking priors using ppcheck (prior predictive check)
+pp_check(model_priorAPA, nsamples = 100)
+
+# Creating the model
+modelAPA <- brm(
+  formula = ModelAPA,
+  data = data_2,
+  family = gaussian,
+  prior = prior_defAPA,
+  sample_prior=T,
+  backend="cmdstanr",
+  threads = threading(2)
+)
+
+# Visualizing the priors
+priorAPA <- prior_samples(modelAPA)
+priorAPA %>% glimpse()
+
+## Drawing out possible predictions from the priors
+priorAPA %>% 
+  slice_sample(n = 50) %>% 
+  rownames_to_column("draw") %>% 
+  expand(nesting(draw, b),
+         a = c(-2, 2)) %>% 
+  mutate(d = b * a) %>% 
+
+## Plotting the lines based on the priors
+ggplot(aes(x = a, y = d)) +
+  geom_line(aes(group = draw),
+            color = "firebrick", alpha = .4) +
+  labs(x = "Diagnosis (std)",
+       y = "ALtercentric intrusion (std)") +
+  coord_cartesian(ylim = c(-2, 2)) +
+  theme_bw() +
+  theme(panel.grid = element_blank()) 
+
+# Posterior predictive check
+pp_check(modelAPA, nsamples = 100)
+
+# Sampling from the posterior
+posteriorVH <- posterior_samples(modelVH)
+
+mean(posteriorAPA$b_APA_scale)
+sd(posteriorAPA$b_APA_scale)
+
+ggplot(posteriorAPA) +
+  geom_density(aes(b_APA_scale), fill="blue", alpha=0.2) +
+  theme_minimal()
+
+print(modelAPA)
+
+```
+
+### Voicehearing
 ```{r}
 
 ## Creating model with each predictor to see how much they explain
@@ -252,6 +332,28 @@ modelVH <- brm(
   threads = threading(2)
 )
 
+# Visualizing the priors
+priorVH <- prior_samples(modelVH)
+priorVH %>% glimpse()
+
+## Drawing out possible predictions from the priors
+priorVH %>% 
+  slice_sample(n = 50) %>% 
+  rownames_to_column("draw") %>% 
+  expand(nesting(draw, b),
+         a = c(-2, 2)) %>% 
+  mutate(d = b * a) %>% 
+
+## Plotting the lines based on the priors
+ggplot(aes(x = a, y = d)) +
+  geom_line(aes(group = draw),
+            color = "firebrick", alpha = .4) +
+  labs(x = "Diagnosis (std)",
+       y = "ALtercentric intrusion (std)") +
+  coord_cartesian(ylim = c(-2, 2)) +
+  theme_bw() +
+  theme(panel.grid = element_blank()) 
+
 # Posterior predictive check
 pp_check(modelVH, nsamples = 100)
 
@@ -261,10 +363,14 @@ posteriorVH <- posterior_samples(modelVH)
 mean(posteriorVH$b_VH_scale)
 sd(posteriorVH$b_VH_scale)
 
+ggplot(posteriorVH) +
+  geom_density(aes(b_VH_scale), fill="blue", alpha=0.2) +
+  theme_minimal()
+
 print(modelVH)
 
 ```
-
+### Mindreading
 ```{r}
 # Mindreading
 
@@ -299,6 +405,28 @@ modelMR <- brm(
   threads = threading(2)
 )
 
+# Visualizing the priors
+priorMR <- prior_samples(modelMR)
+priorMR %>% glimpse()
+
+## Drawing out possible predictions from the priors
+priorMR %>% 
+  slice_sample(n = 50) %>% 
+  rownames_to_column("draw") %>% 
+  expand(nesting(draw, b),
+         a = c(-2, 2)) %>% 
+  mutate(d = b * a) %>% 
+
+## Plotting the lines based on the priors
+ggplot(aes(x = a, y = d)) +
+  geom_line(aes(group = draw),
+            color = "firebrick", alpha = .4) +
+  labs(x = "Diagnosis (std)",
+       y = "ALtercentric intrusion (std)") +
+  coord_cartesian(ylim = c(-2, 2)) +
+  theme_bw() +
+  theme(panel.grid = element_blank()) 
+
 # Posterior predictive check
 pp_check(modelMR, nsamples = 100)
 
@@ -308,13 +436,17 @@ posteriorMR <- posterior_samples(modelMR)
 mean(posteriorMR$b_MR_scale)
 sd(posteriorMR$b_MR_scale)
 
+ggplot(posteriorMR) +
+  geom_density(aes(b_MR_scale), fill="blue", alpha=0.2) +
+  theme_minimal()
+
 print(modelMR)
 ```
 
 Both predictors included
 ```{r}
 # Specifying model
-Model4 <- bf(ACI_scale ~ 0 + VH_scale + MR_scale)
+Model4 <- bf(ACI_scale ~ 0 + MR_scale + VH_scale + APA_scale)
 
 # Using get prior
 get_prior(Model4,  data_2, family = gaussian)
@@ -382,14 +514,23 @@ posterior4 <- posterior_samples(model4)
 
 pairs(model4)
 
-ggplot(data_2) +
-  theme_classic() +
-  geom_density(aes(VH_scale), fill="red", alpha=0.3) +
-  geom_density(aes(MR_scale), fill="blue", alpha=0.5)
+ggplot(posterior4) +
+  geom_density(aes(b_MR_scale), fill="blue", alpha=0.2)+
+  geom_density(aes(b_APA_scale),fill = "green", alpha = 0.2)+ 
+  geom_density(aes(b_VH_scale), fill = "red", alpha = 0.2)+
+  geom_density(aes(prior_b), fill = "grey", alpha = 0.2)+
+  theme_minimal()
 
 print(model4)
 
 
 ```
+## Second part
+
+### Q2.1) 
+However, we know that the diagnosis is based on symptom assessment: if the overall sum of symptoms is severe enough, the participant gets a diagnosis. In other words, by selecting the patients, and including the symptoms in the model we might have inadvertently introduced an issue in our inference. Do try to draw a causal graph (Directed Acyclical Graph) of the variables and compare it with the types of causal graphs presented in the slides. Discuss which biases you might have introduced.
+
+### Q2.2.) 
+Redesign your analysis following the graph and report how the results change
 
 
