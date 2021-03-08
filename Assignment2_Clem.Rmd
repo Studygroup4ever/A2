@@ -39,14 +39,16 @@ Q1.1) Does schizophrenia involve altercentric intrusion? Define model and priors
 pacman::p_load(tidyverse, rethinking, brms, patchwork)
 
 #Load data
-d <- read_csv("Ass2.csv")
+d <- read_csv("Ass2.csv") %>% 
+  na.omit()
 
 #scale variables
 d <- d %>% 
   mutate(VH_scale = scale(VoiceHearing),
          MR_scale = scale(MindReading),
          Apath_scale = scale(Apathy),
-         ACI_scale = scale(AltercentricIntrusion))
+         ACI_scale = scale(AltercentricIntrusion),
+         Diagnosis = as.factor(Diagnosis+1))
 
 #I want to see the distr of the raw data
 ggplot(d, aes(VH_scale)) + geom_density()
@@ -54,7 +56,7 @@ ggplot(d, aes(MR_scale)) + geom_density()
 ggplot(d, aes(Apath_scale)) + geom_density()
 ggplot(d, aes(ACI_scale)) + geom_density()
 
-dens(d$VH_scale) #this plot looks slighty different than when using ggplot
+dens(d$VH_scale) #this plot looks slightly different than when using ggplot
 #Likelihood
 #ACI ~ Normal(mu, sigma)
 #Model
@@ -65,15 +67,27 @@ dens(d$VH_scale) #this plot looks slighty different than when using ggplot
 #sigma  ~ Exponential(1)
 
 #Building the model
-# model1 <- quap(
-# alist(
-# D ~ dnorm( mu , sigma ) , #likelihood
-# mu <- a + bA * ACI_scale , #linear model
-# a ~ dnorm( 0 , 0.2 ) , #prior for intercept
-# bA ~ dnorm( 0 , 0.5 ) , #prior for slope
-# sigma ~ dexp( 1 ) #Prior for sigma
-# ) , data = d )
+model1 <- quap(
+alist(
+ACI_scale ~ dnorm( mu , sigma ) , #likelihood
+mu <- a + bA * ACI_scale , #linear model
+a ~ dnorm( 0 , 0.2 ) , #prior for intercept
+bA ~ dnorm( 0 , 0.5 ) , #prior for slope
+sigma ~ dexp( 1) #Prior for sigma
+) , data = d )
 
+precis(model1) #Seems like we could expect a small positive relationship
+
+#OR you can make the quap model with indexes? Why no slope for the predictor variable? DOesn't make a lot of sense to me..
+# m0.quap <- quap(
+#   alist(
+#     ACI_scale ~ dnorm(mu, sigma),
+#     mu <- a[Diagnosis],
+#     a[Diagnosis] ~ dnorm(0,0.5),
+#     sigma ~ dnorm(1,0.5)
+#   ), data = d )
+# 
+# precis(m0.quap, depth = 2)
 #Trying brms framework instead
 # Building models
 
@@ -84,10 +98,14 @@ ACI_f0 <- bf(ACI_scale ~ 1)
 ACI_f1 <- bf(ACI_scale ~ 1 + Diagnosis)
 
 # No intercept model
-#ACI_f2 <- bf(ACI ~ -1 + Diagnosis)
+ACI_f2 <- bf(ACI_scale ~ 0 + Diagnosis)
 
 # Help getting priors
 get_prior(ACI_f1,
+          d,
+          family = gaussian)
+
+get_prior(ACI_f2,
           d,
           family = gaussian)
 
@@ -105,6 +123,10 @@ get_prior(ACI_f1,
           d,
           family = gaussian)
 
+get_prior(ACI_f2,
+          d,
+          family = gaussian)
+
 # Defining the priors
 ACI_p1 <- c(
   prior(normal(0, 0.5), class = Intercept),
@@ -112,9 +134,9 @@ ACI_p1 <- c(
   prior(normal(0, 0.5), class = b, coef = Diagnosis))
 
 ACI_p2 <- c(
-  prior(normal(0, 0.5), class = Intercept),
-  prior(exponential(1), class = sigma),
-  prior(normal(0, 1), class = b, coef = Diagnosis))
+  prior(normal(0, 2.5), class = sigma), #Using the suggestion from get_prior
+  prior(normal(0, 0.5), class = b, coef = Diagnosis1),
+  prior(normal(0, 0.5), class = b, coef = Diagnosis2))
 
 ?prior
 
@@ -124,11 +146,12 @@ ACI_m1_prior <- brm( #simulating from the prior
   family = gaussian,
   prior = ACI_p1,
   sample_prior="only", #Here "only"
-  backend="cmdstanr"
-  #threads = threading(2)
+  backend="cmdstanr",
+  threads = threading(2)
 )
 
 pp_check(ACI_m1_prior, nsamples=100) #we have allowed for some pretty high values
+?pp_check
 
 #Now we fit the model to the data
 ACI_m1_post <- brm(
@@ -140,6 +163,8 @@ ACI_m1_post <- brm(
   backend="cmdstanr",
   threads = threading(2)
 )
+
+
 
 pp_check(ACI_m1_post, nsamples=100)
 ?pp_check
@@ -170,9 +195,57 @@ plot(conditional_effects(ACI_m1_post, spaghetti=T, nsamples=100, method = "fitte
 plot(conditional_effects(ACI_m1_post, spaghetti=T, nsamples=100, method = "predict"), points=T)
 
 
+#And the model with ~ 0 + diagnosis
+
+ACI_m2_post <- brm(
+  formula = ACI_f2,
+  data = d,
+  family = gaussian,
+  prior = ACI_p2,
+  sample_prior=T,
+  backend="cmdstanr",
+  threads = threading(2)
+)
+
+pp_check(ACI_m2_post, nsamples=100)
+
+## Posterior learning (against prior)
+
+posterior2 <- posterior_samples(ACI_m2_post)
 
 
+ggplot(posterior2) +
+  theme_classic() +
+  geom_density(aes(prior_sigma), fill="red", alpha=0.3) +
+  geom_density(aes(sigma), fill="blue", alpha=0.5) #The sigma has an exponential prior, allowing for the potential huge values. The data (blue) has made us a lot more certain
 
+
+####
+## Plotting model 
+conditional_effects(ACI_m2_post) 
+plot(conditional_effects(ACI_m2_post), points=T) #Here you can pretty clearly see the difference in relationship between diagnosis
+
+conditional_effects(ACI_m2_post)
+
+plot(conditional_effects(ACI_m2_post), points=T)
+
+plot(conditional_effects(ACI_m2_post, spaghetti=T, nsamples=100, method = "fitted"), points=T)
+
+plot(conditional_effects(ACI_m2_post, spaghetti=T, nsamples=100, method = "predict"), points=T)
+
+h1 <- hypothesis(ACI_m2_post, "Diagnosis1 = Diagnosis2")
+h2 <- hypothesis(ACI_m2_post, "Diagnosis1 > Diagnosis2")
+h3 <- hypothesis(ACI_m2_post, "Diagnosis1 < Diagnosis2")
+
+rbind(h1$hypothesis, h2$hypothesis, h3$hypothesis)
+
+#Spaghetti plot
+plot(conditional_effects(ACI_m2_post, spaghetti=T, nsamples=100, method = "fitted"), points=T)
+
+plot(conditional_effects(ACI_m2_post, spaghetti=T, nsamples=100, method = "predict"), points=T)
+
+
+#
 ```
 
 
@@ -180,13 +253,261 @@ Q1.2) Is altercentric intrusion related to specific symptoms *in the patients*? 
 
 
 ```{r}
+#I don't expect ACI to be related to apathy, but maybe the two others
+
+##Søren's code:
+reg <- function(x, y, col) abline(lm(y ~ x), col = col)
+
+panel.lm <-
+  function (x, y, col = par("col"), bg = NA, pch = par("pch"), 
+            cex = 1, col.smooth = "red", span = 2 / 3, iter = 3, ...)  {
+    points(x, y, pch = pch, col = col, bg = bg, cex = cex)
+    ok <- is.finite(x) & is.finite(y)
+    if (any(ok)) 
+      reg(x[ok], y[ok], col.smooth)
+  }
+
+panel.cor <- function(x, y, digits = 2, prefix = "", cex.cor, ...) {
+  usr <- par("usr")
+  on.exit(par(usr))
+  par(usr = c(0, 1, 0, 1))
+  r <- cor(x, y)
+  txt <- format(c(r, 0.123456789), digits = digits)[1]
+  txt <- paste0(prefix, txt)
+  text(0.5, 0.5, txt, cex = 1.1, font = 4)
+}
+```
+
+```{r}
+d_sub <- d %>% filter(Diagnosis == 2)
+
+#pairs(~ ACI + MindRead + APA + VH + Diagnosis, data = d, col = rangi2)
+
+#pairs(~ ACI + MindRead + APA + VH, data = d_sub, col = rangi2, lower.panel = panel.cor)
+
+pairs( ~ ACI_scale + MR_scale + Apath_scale + VH_scale + Diagnosis, data = d,
+  panel = panel.lm,
+  cex = 1.5,
+  pch = 19,
+  col = adjustcolor(4, .4),
+  cex.labels = 2,
+  font.labels = 2,
+  lower.panel = panel.cor
+)
+
+pairs( ~ ACI_scale + MR_scale + Apath_scale + VH_scale, data = d_sub,
+  panel = panel.lm,
+  cex = 1.5,
+  pch = 19,
+  col = adjustcolor(4, .4),
+  cex.labels = 2,
+  font.labels = 2,
+  lower.panel = panel.cor
+)
+```
+
+APA + MindRead (+ VH)
+
+```{r}
+M12.1 <- quap(alist(
+  ACI_scale ~ dnorm(mu, sigma),
+  mu <- b_Apath * Apath_scale,
+  b_Apath ~ dnorm(0, 1),
+  sigma ~ dnorm(1, 0.5)),
+  data = d_sub)
+
+M12.2 <- quap(alist(
+  ACI_scale ~ dnorm(mu, sigma),
+  mu <- b_MR_scale * MR_scale,
+  b_MR_scale ~ dnorm(0, 1),
+  sigma ~ dnorm(1, 0.5)),
+  data = d_sub)
+
+M12.3 <- quap(alist(
+  ACI_scale ~ dnorm(mu, sigma),
+  mu <- b_MR_scale * MR_scale + b_Apath * Apath_scale,
+  b_MR_scale ~ dnorm(0, 1),
+  b_Apath ~ dnorm(0, 1),
+  sigma ~ dnorm(1, 0.5)),
+  data = d_sub)
+```
+
+```{r}
+coef <- coeftab(M12.1, M12.2, M12.3)
+plot(coeftab(M12.1))
+
+pre3.1 <- precis(M12.1, prob = .89)
+pre3.2 <- precis(M12.2, prob = .89)
+pre3.3 <- precis(M12.3, prob = .89)
+
+d_plot3 <- data.frame(beta = c(coef@coefs[1,], 
+                              coef@coefs[3,]),
+                     lower = c(pre3.1$`5.5%`[1], 
+                               NA, 
+                               pre3.3$`5.5%`[2], 
+                               NA, 
+                               pre3.2$`5.5%`[1], 
+                               pre3.3$`5.5%`[1]),
+                     upper = c(pre3.1$`94.5%`[1], 
+                               NA, 
+                               pre3.3$`94.5%`[2], 
+                               NA, 
+                               pre3.2$`94.5%`[1], 
+                               pre3.3$`94.5%`[1]), 
+                     model = c('M12.1', 'M12.2', 'M12.3', 'M12.1', 'M12.2', 'M12.3'),
+                     type = c('b_APA', 'b_APA', 'b_APA', 'b_MR', 'b_MR', 'b_MR'))
+
+
+d_plot3 %>% 
+  ggplot(aes(x = beta, y = model, color = type)) + 
+  geom_point() + 
+  geom_segment(aes(x = lower[1], xend = upper[1], 
+                   y = 1, yend = 1), color = 'red', alpha = .2) + 
+  geom_segment(aes(x = lower[3], xend = upper[3], 
+                   y = 3, yend = 3), color = 'red', alpha = .2) +
+  geom_segment(aes(x = lower[6], xend = upper[6],
+                   y = 3, yend = 3), alpha = .2) +
+  geom_segment(aes(x = lower[5], xend = upper[5], 
+                   y = 2, yend = 2), alpha = .2) + 
+  geom_vline(xintercept = 0, lty = 2, alpha = .5) +
+  theme_bw()
+
+
+
 
 ```
 
+###QUESTION 1.2 AGAIN###
+Q1.2) Is altercentric intrusion related to specific symptoms *in the patients*? Identify which of the symptoms could be relevant (given their description above). Should you include more than one symptom? Build models, priors, predictive checks. Assess the evidence and report models and results, including plots. Discuss whether the results make sense.
+
+```{r}
+#We only want to look at the patients (Diagnosis = 2)
+d2 <- filter(d, Diagnosis == 2)
+View(d2)
+
+pairs( ~ ACI_scale + MR_scale + VH_scale + Apath_scale, data=d2 , col=rangi2 )
+
+#Model with Mindreading
+ACI_MR <- quap(
+alist(
+ACI_scale ~ dnorm( mu , sigma ) ,
+mu <- a + b_MR * MR_scale,
+a ~ dnorm( 0 , 0.2 ) ,
+b_MR ~ dnorm( 0 , 0.5 ) ,
+sigma ~ dnorm(1, 0.5)
+) , data = d2 )
+
+precis( ACI_MR ) #b_MR  0.12 0.10 -0.05  0.28
+
+
+
+
+#Model with apathy - not gonna do this with brms because..
+ACI_Apath <- quap(
+alist(
+ACI_scale ~ dnorm( mu , sigma ) ,
+mu <- a + b_Apath * Apath_scale,
+a ~ dnorm( 0 , 0.2 ) ,
+b_Apath ~ dnorm( 0 , 0.5 ) ,
+sigma ~ dnorm(1, 0.5)
+) , data = d2 )
+
+precis(ACI_Apath) #b_Apath -0.09 0.12 -0.28  0.10
+
+#Model with voice hearing
+ACI_VH <- quap(
+alist(
+ACI_scale ~ dnorm( mu , sigma ) ,
+mu <- a + b_VH * VH_scale,
+a ~ dnorm( 0 , 0.2 ) ,
+b_VH ~ dnorm( 0 , 0.5 ) ,
+sigma ~ dnorm(1, 0.5)
+) , data = d2 )
+
+precis(ACI_VH) #b_VH  0.14 0.12 -0.05  0.33
+
+#Does it make sense to make a model with all or some of the predictors when none of them seem to be very certain? FUck it we try
+
+ACI_all <- quap(
+alist(
+ACI_scale ~ dnorm( mu , sigma ) ,
+mu <- a + b_VH * VH_scale + b_MR * MR_scale + b_Apath * Apath_scale,
+a ~ dnorm( 0 , 0.2 ) ,
+b_VH ~ dnorm( 0 , 0.5 ) ,
+b_MR ~ dnorm(0, 0.5),
+b_Apath ~ dnorm(0, 0.5),
+sigma ~ dnorm(1, 0.5)
+) , data = d2 )
+
+precis(ACI_all) #The estimates are still all too uncertain to say anything about.
+
+#You can include a nice plot of the slopes
+plot( coeftab(m5.1,m5.2,m5.3), par=c("bA","bM") )
+
+
+
+
+
+```
+
+```{r}
+##RUnning the models in brms:
+
+#The effect of MR on ACI
+ACI_MR_brms <- bf(ACI_scale ~ 1 + MR_scale)
+
+prior_ACI_MR_brms <- c(
+  prior(normal(0, 0.2), class = Intercept),
+  prior(normal(0, 0.5), class = b),
+  prior(normal(1, 0.5), class = sigma)
+)
+
+ACI_MR_brms_prior <- brm( #simulating from the prior
+  formula = ACI_MR_brms,
+  data = d2,
+  family = gaussian,
+  prior = prior_ACI_MR_brms,
+  sample_prior="only", #Here "only"
+  backend="cmdstanr",
+  threads = threading(2)
+)
+
+pp_check(ACI_MR_brms_prior) #Looks a bit fucked. The mean looks to be zero though, but the priors are alright I think. 
+
+#Running the model
+ACI_MR_brms_post <- brm( #simulating from the prior
+  formula = ACI_MR_brms,
+  data = d2,
+  family = gaussian,
+  prior = prior_ACI_MR_brms,
+  sample_prior=T, #Here "only"
+  backend="cmdstanr",
+  threads = threading(2)
+)
+
+pp_check(ACI_MR_brms_post) #Looks like the is no effect of MR on ACI_scale
+
+conditional_effects(ACI_MR_brms_post) #Huge uncertainty
+```
 
 ## Second part
 
 Q2.1) However, we know that the diagnosis is based on symptom assessment: if the overall sum of symptoms is severe enough, the participant gets a diagnosis. In other words, by selecting the patients, and including the symptoms in the model we might have inadvertently introduced an issue in our inference. Do try to draw a causal graph (Directed Acyclical Graph) of the variables and compare it with the types of causal graphs presented in the slides. Discuss which biases you might have introduced.
+
+```{r}
+
+
+plant_dag <- dagitty( "dag {
+H_0 -> H_1
+F -> H_1
+T -> F
+}")
+coordinates( plant_dag ) <- list( x=c(H_0=0,T=2,F=1.5,H_1=1) ,
+y=c(H_0=0,T=0,F=0,H_1=0) )
+drawdag( plant_dag )
+
+```
+
 
 Q2.2.) Redesign your analysis following the graph and report how the results change
 
