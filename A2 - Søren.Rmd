@@ -372,6 +372,29 @@ plot(conditional_effects(ACI_m0, spaghetti=T, nsamples=100, method = "fitted"), 
 
 plot(conditional_effects(ACI_m0, spaghetti=T, nsamples=100, method = "predict"), points=T)
 
+# slicing the posterior
+posterior_slice <- posterior_m1 %>% 
+  slice(1:100) %>% 
+  mutate(predicted_diag1 = rnorm(n = 100, 
+                                 mean = mean(posterior_m1$b_Diagnosis1), 
+                                 sd = mean(posterior_m1$sigma)),
+         predicted_diag2 = rnorm(n = 100, 
+                                 mean = mean(posterior_m1$b_Diagnosis2), 
+                                 sd = mean(posterior_m1$sigma)))
+
+# plotting model implications
+d %>% 
+  ggplot(aes(x = Diagnosis, y = ACI)) +
+  geom_abline(intercept = posterior_slice[ ,1] - (posterior_slice[ ,2] - posterior_slice[ ,1]), 
+              slope     = posterior_slice[ ,2] - posterior_slice[ ,1], alpha = 0.1) +
+  geom_point(shape = 1, size = 2, color = "royalblue") +
+  ggtitle("Model predictions plotted against scaled data, N = 100") +
+  scale_x_discrete(labels=c("1" = "Control", "2" = "Schizophrenia")) + 
+  ylab("Altercentric Intrusion (std)") +
+  theme_minimal()
+
+
+
 h1 <- hypothesis(ACI_m0, "Diagnosis1 = Diagnosis2")
 h2 <- hypothesis(ACI_m0, "Diagnosis1 > Diagnosis2")
 h3 <- hypothesis(ACI_m0, "Diagnosis1 < Diagnosis2")

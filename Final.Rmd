@@ -59,7 +59,7 @@ p_load(dagitty,
 # Scaling and scaling
 d <- read_csv("Ass2.csv") %>% mutate(
   ACI = scale(AltercentricIntrusion),
-  MindRead = scale(MindReading),
+  MR = scale(MindReading),
   APA = scale(Apathy),
   VH = scale(VoiceHearing),
   Diagnosis = as.factor(Diagnosis + 1),
@@ -154,12 +154,12 @@ prior_samples(ACI_m0) %>%
   ggplot(aes(x = a, y = d)) +
   geom_line(aes(group = draw),
             color = "firebrick", alpha = .4) +
-  labs(x = "Diagnosis (std)",
-       y = "ALtercentric intrusion (std)") +
+  labs(x = "Change in Experimental Group",
+       y = "Altercentric Intrusion (std)") +
   coord_cartesian(ylim = c(-2, 2)) +
   theme_bw() +
   theme(panel.grid = element_blank()) +
-  ggtitle("Possible slopes based on priors beta = normal(0, 1) & sigma = normal(1, 0.5)")
+  ggtitle("Possible slopes based on priors beta = normal(0, 1) & sigma = normal(1, 0.5)") 
 
 
 ```
@@ -223,8 +223,8 @@ prior_samples(ACI_m1) %>%
   ggplot(aes(x = a, y = d)) +
   geom_line(aes(group = draw),
             color = "firebrick", alpha = .4) +
-  labs(x = "Diagnosis (std)",
-       y = "ALtercentric intrusion (std)") +
+  labs(x = "Change in Experimental Group",
+       y = "Altercentric Intrusion (std)") +
   coord_cartesian(ylim = c(-2, 2)) +
   theme_bw() +
   theme(panel.grid = element_blank()) +
@@ -314,7 +314,7 @@ panel.cor <- function(x, y, digits = 2, prefix = "", cex.cor, ...) {
 d_sub <- d %>% filter(Diagnosis == 2)
 
 # Pairs-plot for everybody
-pairs( ~ ACI + MindRead + APA + VH + Diagnosis, data = d,
+pairs( ~ ACI + MR + APA + VH + Diagnosis, data = d,
   panel = panel.lm,
   cex = 1.5,
   pch = 19,
@@ -325,7 +325,7 @@ pairs( ~ ACI + MindRead + APA + VH + Diagnosis, data = d,
 )
 
 # pairs-plot for only the schizophrenic group
-pairs( ~ ACI + MindRead + APA + VH, data = d_sub,
+pairs( ~ ACI + MR + APA + VH, data = d_sub,
   panel = panel.lm,
   cex = 1.5,
   pch = 19,
