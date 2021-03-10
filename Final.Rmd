@@ -743,9 +743,8 @@ plot(coeftab(m_APA_full, m_MR_full, m_VH_full, m_VH_MR_full, m_ALL_full), par=c(
 plot(coeftab(m_APA_schz, m_MR_schz, m_VH_schz, m_VH_MR_schz, m_ALL_schz), par=c("b_VH","b_MR", "b_Apath"))
 
 #Potential plotting issues can be fixed by:
-# #Maybe try this solution https://github.com/rmcelreath/rethinking/issues/22
-# setMethod( "plot" , "coeftab" , function(x,y,...) coeftab_plot(x,y,...) )
-# getMethod("plot", "coeftab")
+#setMethod( "plot" , "coeftab" , function(x,y,...) coeftab_plot(x,y,...) )
+#getMethod("plot", "coeftab")
 ```
 
 
