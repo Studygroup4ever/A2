@@ -21,32 +21,24 @@ pacman::p_load(ggplot2,
                tidyverse, 
                rethinking, 
                brms)
-
 # read in data
 d <- read.csv("Ass2.csv")
 d <- d %>% na.omit()
-
 # making Diagnosis an index variable
 d$Diagnosis <- ifelse(d$Diagnosis == 0, 1, 2)
-
 # first look
 head(d)
-
 # scale
 d$s_AltercentricIntrusion <- scale(d$AltercentricIntrusion)
-
 # plot to see the distribution overall
 d %>% ggplot(aes(s_AltercentricIntrusion))+
   theme_minimal()+
   geom_density()+
   ggtitle("Density of Altercentric intrusion scores (scaled)")
-
 # plot to see for the two distributions og Control and Schizophrenic
 d$Diagnosis_name <- ifelse(d$Diagnosis == 1, "Control", "Schizophrenic")
-
 # get means
 d %>% group_by(Diagnosis_name) %>% summarise(mean(s_AltercentricIntrusion))
-
 d %>% group_by(Diagnosis_name) %>% 
   ggplot(aes(s_AltercentricIntrusion, fill = Diagnosis_name, color = Diagnosis_name))+
   geom_density(alpha = 0.3)+
@@ -57,7 +49,6 @@ d %>% group_by(Diagnosis_name) %>%
   theme_minimal() +
   xlab("Altercentric Intrusion severity score (std)")+
   ylab("Density")
-
 ```
 From the plot we can tell that the mean for Altercentric Intrustion severity is higher for Schizophrenics (blue distribution and blue mean line) than for Controls (red distribution and red mean line). Higher peak also for the blue distribution - calculate area under curve? 
 
@@ -69,38 +60,31 @@ To do that, let's try to model Altercentric Intrusion as a gaussian distribution
 
 ```{r}
 # 1. Define model
-
 ####### Gonna do it with quap first, because they do it in the book and I want to see: 
 m0.quap <- quap(alist(s_AltercentricIntrusion ~ dnorm(mu, sigma),
                       mu <- a[Diagnosis],
                       a[Diagnosis] ~ dnorm(0, 5),
                       sigma ~ dexp(1)), data = d)
-
 precis(m0.quap, depth = 2)
 ```
 
 ### MODEL m0
 ```{r}
 ####### Gonna do it with brms now
-
 ## define formula
 AS_f0 <- bf(s_AltercentricIntrusion ~ 1 + Diagnosis)
-
 # specify and visualize priors - what priors do we want? 
 get_prior(
   AS_f0,
   d,
   family = gaussian
 )
-
 # defining priors: 
 AS_p0 <- c(
   prior(normal(0,0.5), class = Intercept), 
  prior(exponential(1), class = sigma), 
  prior(normal(0,1), class = b, coef = Diagnosis) #ask about this
 )
-
-
 # 2. Visualize joint expectations of the model (prior + likelihood function)
 ## Predictive priors (ppcheck, but also conditional effects)
 # model 
@@ -113,10 +97,8 @@ model_prior <- brm(
   backend = "cmdstanr",
   threads = threading(2)
 )
-
 # prior predictive check
 (p0 <- pp_check(model_prior, nsamples=100)+xlab("Altercentric Intrusion (std)")+ylab("Density")+ggtitle("Prior predictive check for model m0"))
-
 # 3. Fit the model
 model <- brm(
   formula = AS_f0,
@@ -127,31 +109,24 @@ model <- brm(
   backend = "cmdstanr",
   threads = threading(2)
 )
-
 # posterior predictive check
 (p1 <- pp_check(model, nsamples=100)+xlab("Altercentric Intrusion (std)")+ylab("Density")+ggtitle("Posterior predictive check for model m0"))
-
 # 4. Assess model quality
 library(patchwork)
-
 # prior pred. and posterior pred. 
 p0 + p1
-
 # posterior learning (update) plots
 posterior <- posterior_samples(model)
-
 ggplot(posterior) +
   theme_classic() +
   geom_density(aes(prior_Intercept), fill="red", alpha=0.3) +
   geom_density(aes(b_Intercept), fill="blue", alpha=0.5)+
   ggtitle("Posterior learning against prior (Intercept)")
-
 ggplot(posterior) +
   theme_classic() +
   geom_density(aes(prior_sigma), fill="red", alpha=0.3) +
   geom_density(aes(sigma), fill="blue", alpha=0.5) +
   ggtitle("Posterior learning against prior (Sigma)")
-
 ggplot(posterior) +
   theme_classic() +
   geom_density(aes(prior_b_Diagnosis), fill="red", alpha=0.3) +
@@ -159,16 +134,11 @@ ggplot(posterior) +
   ggtitle("Posterior learning against prior (Beta for Diagnosis, 
   so the expected difference between populations in Altercentric Intrusion-score)")+
   geom_vline(xintercept = mean(posterior$b_Diagnosis)	, lty = 2, alpha = .7, color = "darkblue")
-
 # conditional effects - plotting model
 conditional_effects(model)
-
 plot(conditional_effects(model), points=T)
-
 plot(conditional_effects(model, spaghetti=T, nsamples=100, method = "fitted"), points=T)
-
 plot(conditional_effects(model, spaghetti=T, nsamples=100, method = "predict"), points=T)
-
 ```
 ## wat
 ```{r}
@@ -181,25 +151,20 @@ hypothesis(model, "Intercept < 0")
 ### MODEL m1
 ```{r}
 ####### Gonna do it with brms now - with the other model 
-
 ## define formula
 AS_f1 <- bf(s_AltercentricIntrusion ~ 1 + Diagnosis)
-
 # specify and visualize priors - what priors do we want? 
 get_prior(
   AS_f1,
   d,
   family = gaussian
 )
-
 # defining priors: 
 AS_p1 <- c(
   prior(normal(0,0.5), class = Intercept), 
  prior(exponential(1), class = sigma), 
  prior(normal(0,0.5), class = b, coef = Diagnosis) #ask about this
 )
-
-
 # 2. Visualize joint expectations of the model (prior + likelihood function)
 ## Predictive priors (ppcheck, but also conditional effects)
 # model 
@@ -212,10 +177,8 @@ model1_prior <- brm(
   backend = "cmdstanr",
   threads = threading(2)
 )
-
 # prior predictive check
 (p00 <- pp_check(model1_prior, nsamples=100)+xlab("Altercentric Intrusion (std)")+ylab("Density")+ggtitle("Prior predictive check for model m1"))
-
 # 3. Fit the model
 model1 <- brm(
   formula = AS_f1,
@@ -226,31 +189,24 @@ model1 <- brm(
   backend = "cmdstanr",
   threads = threading(2)
 )
-
 # posterior predictive check
 (p11 <- pp_check(model1, nsamples=100)+xlab("Altercentric Intrusion (std)")+ylab("Density")+ggtitle("Posterior predictive check for model m1"))
-
 # 4. Assess model quality
 library(patchwork)
-
 # prior pred. and posterior pred. 
 p00 + p11
-
 # posterior learning (update) plots
 posterior1 <- posterior_samples(model1)
-
 ggplot(posterior1) +
   theme_classic() +
   geom_density(aes(prior_Intercept), fill="red", alpha=0.3) +
   geom_density(aes(b_Intercept), fill="blue", alpha=0.5)+
   ggtitle("Posterior learning against prior (Intercept)")
-
 ggplot(posterior1) +
   theme_classic() +
   geom_density(aes(prior_sigma), fill="red", alpha=0.3) +
   geom_density(aes(sigma), fill="blue", alpha=0.5) +
   ggtitle("Posterior learning against prior (Sigma)")
-
 ggplot(posterior1) +
   theme_classic() +
   geom_density(aes(prior_b_Diagnosis), fill="red", alpha=0.3) +
@@ -267,7 +223,6 @@ model
 # plot(conditional_effects(model, spaghetti=T, nsamples=100, method = "fitted"), points=T)
 # 
 # plot(conditional_effects(model, spaghetti=T, nsamples=100, method = "predict"), points=T)
-
 ```
 ## wat
 ```{r}
@@ -320,7 +275,6 @@ hypothesis(model, "Intercept < 0")
 
 ```{r}
 #uhmm why do the means on the plots look opposite? 
-
 # # Checking control
 # d_sub <- filter(d,d$Diagnosis==0)
 # 
@@ -348,4 +302,3 @@ hypothesis(model, "Intercept < 0")
 #   ggtitle("Density of Altercentric intrusion scores per Diagnosis (scaled) w. mean lines")+
 #   theme_minimal()
 ```
-
