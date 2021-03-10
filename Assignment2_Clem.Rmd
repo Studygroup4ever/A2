@@ -544,10 +544,6 @@ plot(coeftab(ACI_Apath2, ACI_MR2, ACI_VH2, ACI_VH_MR2, ACI_all2), par=c("b_VH","
 # setMethod( "plot" , "coeftab" , function(x,y,...) coeftab_plot(x,y,...) )
 # getMethod("plot", "coeftab")
 
-?coeftab
-
-
-
 ```
 
 ```{r}

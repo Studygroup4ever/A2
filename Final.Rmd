@@ -605,7 +605,7 @@ d2 <- d_sub #Only schizophrenic
 #Remaking the models with quap - including both neurotypicals and schrizophrenic population:
 
 #Model with Mindreading
-ACI_MR <- quap(
+m_MR_full <- quap(
 alist(
 ACI_scale ~ dnorm( mu , sigma ) ,
 mu <- a[Diagnosis] + b_MR * MR_scale,
@@ -614,11 +614,11 @@ b_MR ~ dnorm( 0 , 0.5 ) ,
 sigma ~ dnorm(1, 0.5)
 ) , data = data_quap )
 
-precis( ACI_MR , depth = 2)
+precis( m_MR_full , depth = 2)
 
 
 #Model with Apathy
-ACI_Apath <- quap(
+m_APA_full <- quap(
 alist(
 ACI_scale ~ dnorm( mu , sigma ) ,
 mu <- a[Diagnosis] + b_Apath * Apath_scale,
@@ -627,10 +627,10 @@ b_Apath ~ dnorm( 0 , 0.5 ) ,
 sigma ~ dnorm(1, 0.5)
 ) , data = data_quap )
 
-precis(ACI_Apath, depth = 2) 
+precis(m_APA_full, depth = 2) 
 
 #Model with voice hearing
-ACI_VH <- quap(
+m_VH_full <- quap(
 alist(
 ACI_scale ~ dnorm( mu , sigma ) ,
 mu <- a[Diagnosis] + b_VH * VH_scale,
@@ -639,22 +639,10 @@ b_VH ~ dnorm( 0 , 0.5 ) ,
 sigma ~ dnorm(1, 0.5)
 ) , data = data_quap )
 
-precis(ACI_VH, depth = 2)
-
-#Model with voice hearing
-ACI_VH <- quap(
-alist(
-ACI_scale ~ dnorm( mu , sigma ) ,
-mu <- a[Diagnosis] + b_VH * VH_scale,
-a[Diagnosis] ~ dnorm( 0 , 0.2 ) ,
-b_VH ~ dnorm( 0 , 0.5 ) ,
-sigma ~ dnorm(1, 0.5)
-) , data = data_quap )
-
-precis(ACI_VH, depth = 2)
+precis(m_VH_full, depth = 2)
 
 #Model with voice hearing + Mindreading
-ACI_VH_MR <- quap(
+m_VH_MR_full <- quap(
 alist(
 ACI_scale ~ dnorm( mu , sigma ) ,
 mu <- a[Diagnosis] + b_VH * VH_scale + b_MR * MR_scale,
@@ -664,10 +652,10 @@ b_MR ~ dnorm(0, 0.5),
 sigma ~ dnorm(1, 0.5)
 ) , data = data_quap )
 
-precis(ACI_VH_MR, depth = 2)
+precis(m_VH_MR_full, depth = 2)
 
 #Model including all predictors
-ACI_all <- quap(
+m_ALL_full <- quap(
 alist(
 ACI_scale ~ dnorm( mu , sigma ) ,
 mu <- a[Diagnosis] + b_VH * VH_scale + b_MR * MR_scale + b_Apath * Apath_scale,
@@ -678,13 +666,13 @@ b_Apath ~ dnorm(0, 0.5),
 sigma ~ dnorm(1, 0.5)
 ) , data = data_quap )
 
-precis(ACI_all, depth = 2)
+precis(m_ALL_full, depth = 2)
 
 
 #Here we make the models only with the schizophrenic population:
 
 #Model with Mindreading
-ACI_MR2 <- quap(
+m_MR_schz <- quap(
 alist(
 ACI_scale ~ dnorm( mu , sigma ) ,
 mu <- b_MR * MR_scale,
@@ -693,11 +681,11 @@ b_MR ~ dnorm( 0 , 0.5 ) ,
 sigma ~ dnorm(1, 0.5)
 ) , data = d2 )
 
-precis( ACI_MR2 )
+precis( m_MR_schz )
 
 
 #Model with apathy - not gonna do this with brms because..
-ACI_Apath2 <- quap(
+m_APA_schz <- quap(
 alist(
 ACI_scale ~ dnorm( mu , sigma ) ,
 mu <- b_Apath * Apath_scale,
@@ -706,10 +694,10 @@ b_Apath ~ dnorm( 0 , 0.5 ) ,
 sigma ~ dnorm(1, 0.5)
 ) , data = d2 )
 
-precis(ACI_Apath2)
+precis(m_APA_schz)
 
 #Model with voice hearing
-ACI_VH2 <- quap(
+m_VH_schz <- quap(
 alist(
 ACI_scale ~ dnorm( mu , sigma ) ,
 mu <- b_VH * VH_scale,
@@ -718,11 +706,11 @@ b_VH ~ dnorm( 0 , 0.5 ) ,
 sigma ~ dnorm(1, 0.5)
 ) , data = d2 )
 
-precis(ACI_VH2)
+precis(m_VH_schz)
 
 
 #Model with voice hearing
-ACI_VH_MR2 <- quap(
+m_VH_MR_schz <- quap(
 alist(
 ACI_scale ~ dnorm( mu , sigma ) ,
 mu <- b_VH * VH_scale + b_MR * MR_scale,
@@ -732,10 +720,10 @@ b_MR ~ dnorm(0, 0.5),
 sigma ~ dnorm(1, 0.5)
 ) , data = d2 )
 
-precis(ACI_VH_MR2)
+precis(m_VH_MR_schz)
 
 #Model with all predictors:
-ACI_all2 <- quap(
+m_ALL_schz <- quap(
 alist(
 ACI_scale ~ dnorm( mu , sigma ) ,
 mu <- b_VH * VH_scale + b_MR * MR_scale + b_Apath * Apath_scale,
@@ -746,13 +734,13 @@ b_Apath ~ dnorm(0, 0.5),
 sigma ~ dnorm(1, 0.5)
 ) , data = d2 )
 
-precis(ACI_all2)
+precis(m_ALL_schz)
 
 #Plotting model coefficients:
-plot(coeftab(ACI_Apath, ACI_MR, ACI_VH, ACI_VH_MR, ACI_all), par=c("b_VH","b_MR", "b_Apath"))
+plot(coeftab(m_APA_full, m_MR_full, m_VH_full, m_VH_MR_full, m_ALL_full), par=c("b_VH","b_MR", "b_Apath"))
 
 #And for the schizophrenic population
-plot(coeftab(ACI_Apath2, ACI_MR2, ACI_VH2, ACI_VH_MR2, ACI_all2), par=c("b_VH","b_MR", "b_Apath"))
+plot(coeftab(m_APA_schz, m_MR_schz, m_VH_schz, m_VH_MR_schz, m_ALL_schz), par=c("b_VH","b_MR", "b_Apath"))
 
 #Potential plotting issues can be fixed by:
 # #Maybe try this solution https://github.com/rmcelreath/rethinking/issues/22
