@@ -595,5 +595,163 @@ print(model4)
 
 ```
 
+(PART 2)
+#We investigate the effect of conditioning only on the schizophrenic population, and thereby introducing a collider bias. We do this using rethinking::quap() because this allows us to make a coefficient plot and easily compare the models and effects.
+```{r}
+#We only want to look at the patients (Diagnosis = 2)
+data_quap <- d #Copying the data for cooperation purposes
+d2 <- d_sub #Only schizophrenic
+
+#Remaking the models with quap - including both neurotypicals and schrizophrenic population:
+
+#Model with Mindreading
+ACI_MR <- quap(
+alist(
+ACI_scale ~ dnorm( mu , sigma ) ,
+mu <- a[Diagnosis] + b_MR * MR_scale,
+a[Diagnosis] ~ dnorm( 0 , 0.2 ) , #prior 
+b_MR ~ dnorm( 0 , 0.5 ) ,
+sigma ~ dnorm(1, 0.5)
+) , data = data_quap )
+
+precis( ACI_MR , depth = 2)
+
+
+#Model with Apathy
+ACI_Apath <- quap(
+alist(
+ACI_scale ~ dnorm( mu , sigma ) ,
+mu <- a[Diagnosis] + b_Apath * Apath_scale,
+a[Diagnosis] ~ dnorm( 0 , 0.2 ) ,
+b_Apath ~ dnorm( 0 , 0.5 ) ,
+sigma ~ dnorm(1, 0.5)
+) , data = data_quap )
+
+precis(ACI_Apath, depth = 2) 
+
+#Model with voice hearing
+ACI_VH <- quap(
+alist(
+ACI_scale ~ dnorm( mu , sigma ) ,
+mu <- a[Diagnosis] + b_VH * VH_scale,
+a[Diagnosis] ~ dnorm( 0 , 0.2 ) ,
+b_VH ~ dnorm( 0 , 0.5 ) ,
+sigma ~ dnorm(1, 0.5)
+) , data = data_quap )
+
+precis(ACI_VH, depth = 2)
+
+#Model with voice hearing
+ACI_VH <- quap(
+alist(
+ACI_scale ~ dnorm( mu , sigma ) ,
+mu <- a[Diagnosis] + b_VH * VH_scale,
+a[Diagnosis] ~ dnorm( 0 , 0.2 ) ,
+b_VH ~ dnorm( 0 , 0.5 ) ,
+sigma ~ dnorm(1, 0.5)
+) , data = data_quap )
+
+precis(ACI_VH, depth = 2)
+
+#Model with voice hearing + Mindreading
+ACI_VH_MR <- quap(
+alist(
+ACI_scale ~ dnorm( mu , sigma ) ,
+mu <- a[Diagnosis] + b_VH * VH_scale + b_MR * MR_scale,
+a[Diagnosis] ~ dnorm( 0 , 0.2 ) ,
+b_VH ~ dnorm( 0 , 0.5 ) ,
+b_MR ~ dnorm(0, 0.5),
+sigma ~ dnorm(1, 0.5)
+) , data = data_quap )
+
+precis(ACI_VH_MR, depth = 2)
+
+#Model including all predictors
+ACI_all <- quap(
+alist(
+ACI_scale ~ dnorm( mu , sigma ) ,
+mu <- a[Diagnosis] + b_VH * VH_scale + b_MR * MR_scale + b_Apath * Apath_scale,
+a[Diagnosis] ~ dnorm( 0 , 0.2 ) ,
+b_VH ~ dnorm( 0 , 0.5 ) ,
+b_MR ~ dnorm(0, 0.5),
+b_Apath ~ dnorm(0, 0.5),
+sigma ~ dnorm(1, 0.5)
+) , data = data_quap )
+
+precis(ACI_all, depth = 2)
+
+#Plotting model coefficients:
+plot(coeftab(ACI_Apath, ACI_MR, ACI_VH, ACI_VH_MR, ACI_all), par=c("b_VH","b_MR", "b_Apath"))
+
+#Here we make the models only with the schizophrenic population:
+
+#Model with Mindreading
+ACI_MR2 <- quap(
+alist(
+ACI_scale ~ dnorm( mu , sigma ) ,
+mu <- b_MR * MR_scale,
+#a ~ dnorm( 0 , 0.2 ) , #No intercept when we only have one level of diagnosis
+b_MR ~ dnorm( 0 , 0.5 ) ,
+sigma ~ dnorm(1, 0.5)
+) , data = d2 )
+
+precis( ACI_MR2 )
+
+
+#Model with apathy - not gonna do this with brms because..
+ACI_Apath2 <- quap(
+alist(
+ACI_scale ~ dnorm( mu , sigma ) ,
+mu <- b_Apath * Apath_scale,
+#a ~ dnorm( 0 , 0.2 ) ,
+b_Apath ~ dnorm( 0 , 0.5 ) ,
+sigma ~ dnorm(1, 0.5)
+) , data = d2 )
+
+precis(ACI_Apath2)
+
+#Model with voice hearing
+ACI_VH2 <- quap(
+alist(
+ACI_scale ~ dnorm( mu , sigma ) ,
+mu <- b_VH * VH_scale,
+#a ~ dnorm( 0 , 0.2 ) ,
+b_VH ~ dnorm( 0 , 0.5 ) ,
+sigma ~ dnorm(1, 0.5)
+) , data = d2 )
+
+precis(ACI_VH2)
+
+
+#Model with voice hearing
+ACI_VH_MR2 <- quap(
+alist(
+ACI_scale ~ dnorm( mu , sigma ) ,
+mu <- b_VH * VH_scale + b_MR * MR_scale,
+#a ~ dnorm( 0 , 0.2 ) ,
+b_VH ~ dnorm( 0 , 0.5 ) ,
+b_MR ~ dnorm(0, 0.5),
+sigma ~ dnorm(1, 0.5)
+) , data = d2 )
+
+precis(ACI_VH_MR2)
+
+#Model with all predictors:
+ACI_all2 <- quap(
+alist(
+ACI_scale ~ dnorm( mu , sigma ) ,
+mu <- b_VH * VH_scale + b_MR * MR_scale + b_Apath * Apath_scale,
+#a ~ dnorm( 0 , 0.2 ) , #
+b_VH ~ dnorm( 0 , 0.5 ) ,
+b_MR ~ dnorm(0, 0.5),
+b_Apath ~ dnorm(0, 0.5),
+sigma ~ dnorm(1, 0.5)
+) , data = d2 )
+
+precis(ACI_all2)
+
+#You can include a nice plot of the slopes
+plot(coeftab(ACI_Apath2, ACI_MR2, ACI_VH2, ACI_VH_MR2, ACI_all2), par=c("b_VH","b_MR", "b_Apath"))
+```
 
 
