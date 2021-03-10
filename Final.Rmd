@@ -377,40 +377,8 @@ modelAPA <- brm(
   threads = threading(2)
 )
 
-# Visualizing the priors
-priorAPA <- prior_samples(modelAPA)
-priorAPA %>% glimpse()
-
-## Drawing out possible predictions from the priors
-priorAPA %>% 
-  slice_sample(n = 50) %>% 
-  rownames_to_column("draw") %>% 
-  expand(nesting(draw, b),
-         a = c(-2, 2)) %>% 
-  mutate(d = b * a) %>% 
-
-## Plotting the lines based on the priors
-ggplot(aes(x = a, y = d)) +
-  geom_line(aes(group = draw),
-            color = "firebrick", alpha = .4) +
-  labs(x = "Change in Experimental Group",
-       y = "Altercentric Intrusion (std)") +
-  coord_cartesian(ylim = c(-2, 2)) +
-  theme_bw() +
-  theme(panel.grid = element_blank()) 
-
 # Posterior predictive check
 pp_check(modelAPA, nsamples = 100)
-
-# Sampling from the posterior
-posteriorAPA <- posterior_samples(modelAPA)
-
-mean(posteriorAPA$b_APA)
-sd(posteriorAPA$b_APA)
-
-ggplot(posteriorAPA) +
-  geom_density(aes(b_APA), fill="blue", alpha=0.2) +
-  theme_minimal()
 
 print(modelAPA)
 
@@ -453,40 +421,9 @@ modelVH <- brm(
   threads = threading(2)
 )
 
-# Visualizing the priors
-priorVH <- prior_samples(modelVH)
-priorVH %>% glimpse()
-
-## Drawing out possible predictions from the priors
-priorVH %>% 
-  slice_sample(n = 50) %>% 
-  rownames_to_column("draw") %>% 
-  expand(nesting(draw, b),
-         a = c(-2, 2)) %>% 
-  mutate(d = b * a) %>% 
-
-## Plotting the lines based on the priors
-ggplot(aes(x = a, y = d)) +
-  geom_line(aes(group = draw),
-            color = "firebrick", alpha = .4) +
-  labs(x = "Change in Experimental Group",
-       y = "Altercentric Intrusion (std)") +
-  coord_cartesian(ylim = c(-2, 2)) +
-  theme_bw() +
-  theme(panel.grid = element_blank()) 
 
 # Posterior predictive check
 pp_check(modelVH, nsamples = 100)
-
-# Sampling from the posterior
-posteriorVH <- posterior_samples(modelVH)
-
-mean(posteriorVH$b_VH)
-sd(posteriorVH$b_VH)
-
-ggplot(posteriorVH) +
-  geom_density(aes(b_VH), fill="blue", alpha=0.2) +
-  theme_minimal()
 
 print(modelVH)
 
@@ -526,42 +463,11 @@ modelMR <- brm(
   threads = threading(2)
 )
 
-# Visualizing the priors
-priorMR <- prior_samples(modelMR)
-priorMR %>% glimpse()
-
-## Drawing out possible predictions from the priors
-priorMR %>% 
-  slice_sample(n = 50) %>% 
-  rownames_to_column("draw") %>% 
-  expand(nesting(draw, b),
-         a = c(-2, 2)) %>% 
-  mutate(d = b * a) %>% 
-
-## Plotting the lines based on the priors
-ggplot(aes(x = a, y = d)) +
-  geom_line(aes(group = draw),
-            color = "firebrick", alpha = .4) +
-  labs(x = "Diagnosis (std)",
-       y = "ALtercentric intrusion (std)") +
-  coord_cartesian(ylim = c(-2, 2)) +
-  theme_bw() +
-  theme(panel.grid = element_blank()) 
-
 # Posterior predictive check
 pp_check(modelMR, nsamples = 100)
 
-# Sampling from the posterior
-posteriorMR <- posterior_samples(modelMR)
-
-mean(posteriorMR$b_MR)
-sd(posteriorMR$b_MR)
-
-ggplot(posteriorMR) +
-  geom_density(aes(b_MR), fill="blue", alpha=0.2) +
-  theme_minimal()
-
 print(modelMR)
+
 ```
 
 Two predictors included
@@ -593,7 +499,6 @@ model_mTwo_prior <- brm(
 # Checking priors using ppcheck (prior predictive check)
 pp_check(model_mTwo_prior, nsamples = 100)
 
-
 # Creating the model
 model_mTwo <- brm(
   formula = ModelTwo,
@@ -605,46 +510,23 @@ model_mTwo <- brm(
   threads = threading(2)
 )
 
-# Visualizing the priors
-prior_mTwo <- prior_samples(model_mTwo)
-prior_mTwo %>% glimpse()
-
-## Drawing out possible predictions from the priors
-prior_mTwo %>% 
-  slice_sample(n = 50) %>% 
-  rownames_to_column("draw") %>% 
-  expand(nesting(draw, b),
-         a = c(-2, 2)) %>% 
-  mutate(d = b * a) %>% 
-
-## Plotting the lines based on the priors
-ggplot(aes(x = a, y = d)) +
-  geom_line(aes(group = draw),
-            color = "firebrick", alpha = .4) +
-  labs(x = "Diagnosis (std)",
-       y = "ALtercentric intrusion (std)") +
-  coord_cartesian(ylim = c(-2, 2)) +
-  theme_bw() +
-  theme(panel.grid = element_blank()) 
-
 # Posterior predictive check
 pp_check(model_mTwo, nsamples = 100)
 
 # Sampling from the posterior
-posterior_mTwo <- posterior_samples(model_mTwo)
-
-pairs(model_mTwo)
+posterior_samples(model_mTwo) %>% 
 
 # Creating a long format of the posterior to plot the different distributions together
-posterior_mTwo %>%
   pivot_longer(c(b_MR, b_VH, prior_b), names_to = "Estimates") %>%
-  ggplot(aes(fill = Estimates)) +
-  
+
 # Plotting the prior and posterior distributions
+  ggplot(aes(fill = Estimates)) +
   geom_density(aes(value), alpha = 0.3) +
   theme_minimal() +
   scale_fill_discrete(name = "Estimates", labels = c("MR", "VH", "Prior")) +
   xlab("Altercentric Intrusion (std)")
+
+pairs(model_mTwo)
 
 print(model_mTwo)
 
@@ -691,46 +573,23 @@ model4 <- brm(
   threads = threading(2)
 )
 
-# Visualizing the priors
-prior4 <- prior_samples(model4)
-prior4 %>% glimpse()
-
-## Drawing out possible predictions from the priors
-prior4 %>% 
-  slice_sample(n = 50) %>% 
-  rownames_to_column("draw") %>% 
-  expand(nesting(draw, b),
-         a = c(-2, 2)) %>% 
-  mutate(d = b * a) %>% 
-
-## Plotting the lines based on the priors
-ggplot(aes(x = a, y = d)) +
-  geom_line(aes(group = draw),
-            color = "firebrick", alpha = .4) +
-  labs(x = "Diagnosis (std)",
-       y = "ALtercentric intrusion (std)") +
-  coord_cartesian(ylim = c(-2, 2)) +
-  theme_bw() +
-  theme(panel.grid = element_blank()) 
-
 # Posterior predictive check
 pp_check(model4, nsamples = 100)
 
 # Sampling from the posterior
-posterior4 <- posterior_samples(model4)
-
-pairs(model4)
+posterior_samples(model4) %>% 
 
 # Creating a long format of the posterior to plot the different distributions together
-posterior4 %>%
   pivot_longer(c(b_MR, b_VH, b_APA, prior_b), names_to = "Estimates") %>%
-  ggplot(aes(fill = Estimates)) +
   
 # Plotting the prior and posterior distributions
+  ggplot(aes(fill = Estimates)) +
   geom_density(aes(value), alpha = 0.3) +
   theme_minimal() +
   scale_fill_discrete(name = "Estimates", labels = c("APA", "MR", "VH", "Prior")) +
   xlab("Altercentric Intrusion (std)")
+
+pairs(model4)
 
 print(model4)
 
