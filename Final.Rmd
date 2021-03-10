@@ -335,9 +335,406 @@ pairs( ~ ACI + MR + APA + VH, data = d_sub,
   lower.panel = panel.cor
 )
 
+cor.test(d_sub$MindReading, d_sub$VoiceHearing)
+
 ```
 
 
+### Apathy
+
+```{r}
+## Creating model with each predictor to see how much they explain
+
+# Voicehearing
+ModelAPA <- bf(ACI ~ 0 + APA)
+
+prior_defAPA <- c(prior(normal(1,0.5), class = sigma),
+  prior(normal(0,0.5), class = b))
+
+# Specifiying a model for assessing the priors
+model_priorAPA <- brm(
+  formula = ModelAPA,
+  data = d_sub,
+  family = gaussian,
+  prior = prior_defAPA,
+  sample_prior="only",
+  file = "model_prior",
+  backend="cmdstanr",
+  threads = threading(2)
+)
+
+# Checking priors using ppcheck (prior predictive check)
+pp_check(model_priorAPA, nsamples = 100)
+
+# Creating the model
+modelAPA <- brm(
+  formula = ModelAPA,
+  data = d_sub,
+  family = gaussian,
+  prior = prior_defAPA,
+  sample_prior=T,
+  backend="cmdstanr",
+  threads = threading(2)
+)
+
+# Visualizing the priors
+priorAPA <- prior_samples(modelAPA)
+priorAPA %>% glimpse()
+
+## Drawing out possible predictions from the priors
+priorAPA %>% 
+  slice_sample(n = 50) %>% 
+  rownames_to_column("draw") %>% 
+  expand(nesting(draw, b),
+         a = c(-2, 2)) %>% 
+  mutate(d = b * a) %>% 
+
+## Plotting the lines based on the priors
+ggplot(aes(x = a, y = d)) +
+  geom_line(aes(group = draw),
+            color = "firebrick", alpha = .4) +
+  labs(x = "Change in Experimental Group",
+       y = "Altercentric Intrusion (std)") +
+  coord_cartesian(ylim = c(-2, 2)) +
+  theme_bw() +
+  theme(panel.grid = element_blank()) 
+
+# Posterior predictive check
+pp_check(modelAPA, nsamples = 100)
+
+# Sampling from the posterior
+posteriorAPA <- posterior_samples(modelAPA)
+
+mean(posteriorAPA$b_APA)
+sd(posteriorAPA$b_APA)
+
+ggplot(posteriorAPA) +
+  geom_density(aes(b_APA), fill="blue", alpha=0.2) +
+  theme_minimal()
+
+print(modelAPA)
+
+```
+
+### Voicehearing
+```{r}
+
+## Creating model with each predictor to see how much they explain
+
+# Voicehearing
+ModelVH <- bf(ACI ~ 0 + VH)
+
+prior_defVH <- c(prior(normal(1,0.5), class = sigma),
+  prior(normal(0,0.5), class = b))
+
+# Specifiying a model for assessing the priors
+model_priorVH <- brm(
+  formula = ModelVH,
+  data = d_sub,
+  family = gaussian,
+  prior = prior_defVH,
+  sample_prior="only",
+  file = "model_prior",
+  backend="cmdstanr",
+  threads = threading(2)
+)
+
+# Checking priors using ppcheck (prior predictive check)
+pp_check(model_priorVH, nsamples = 100)
+
+# Creating the model
+modelVH <- brm(
+  formula = ModelVH,
+  data = d_sub,
+  family = gaussian,
+  prior = prior_defVH,
+  sample_prior=T,
+  backend="cmdstanr",
+  threads = threading(2)
+)
+
+# Visualizing the priors
+priorVH <- prior_samples(modelVH)
+priorVH %>% glimpse()
+
+## Drawing out possible predictions from the priors
+priorVH %>% 
+  slice_sample(n = 50) %>% 
+  rownames_to_column("draw") %>% 
+  expand(nesting(draw, b),
+         a = c(-2, 2)) %>% 
+  mutate(d = b * a) %>% 
+
+## Plotting the lines based on the priors
+ggplot(aes(x = a, y = d)) +
+  geom_line(aes(group = draw),
+            color = "firebrick", alpha = .4) +
+  labs(x = "Change in Experimental Group",
+       y = "Altercentric Intrusion (std)") +
+  coord_cartesian(ylim = c(-2, 2)) +
+  theme_bw() +
+  theme(panel.grid = element_blank()) 
+
+# Posterior predictive check
+pp_check(modelVH, nsamples = 100)
+
+# Sampling from the posterior
+posteriorVH <- posterior_samples(modelVH)
+
+mean(posteriorVH$b_VH)
+sd(posteriorVH$b_VH)
+
+ggplot(posteriorVH) +
+  geom_density(aes(b_VH), fill="blue", alpha=0.2) +
+  theme_minimal()
+
+print(modelVH)
+
+```
+### Mindreading
+```{r}
+# Mindreading
+
+ModelMR <- bf(ACI ~ 0 + MR)
+
+prior_defMR <- c(prior(normal(1,0.5), class = sigma),
+  prior(normal(0,0.5), class = b))
+
+# Specifiying a model for assessing the priors
+model_priorMR <- brm(
+  formula = ModelMR,
+  data = d_sub,
+  family = gaussian,
+  prior = prior_defMR,
+  sample_prior="only",
+  file = "model_prior",
+  backend="cmdstanr",
+  threads = threading(2)
+)
+
+# Checking priors using ppcheck (prior predictive check)
+pp_check(model_priorMR, nsamples = 100)
+
+# Creating the model
+modelMR <- brm(
+  formula = ModelMR,
+  data = d_sub,
+  family = gaussian,
+  prior = prior_defMR,
+  sample_prior=T,
+  backend="cmdstanr",
+  threads = threading(2)
+)
+
+# Visualizing the priors
+priorMR <- prior_samples(modelMR)
+priorMR %>% glimpse()
+
+## Drawing out possible predictions from the priors
+priorMR %>% 
+  slice_sample(n = 50) %>% 
+  rownames_to_column("draw") %>% 
+  expand(nesting(draw, b),
+         a = c(-2, 2)) %>% 
+  mutate(d = b * a) %>% 
+
+## Plotting the lines based on the priors
+ggplot(aes(x = a, y = d)) +
+  geom_line(aes(group = draw),
+            color = "firebrick", alpha = .4) +
+  labs(x = "Diagnosis (std)",
+       y = "ALtercentric intrusion (std)") +
+  coord_cartesian(ylim = c(-2, 2)) +
+  theme_bw() +
+  theme(panel.grid = element_blank()) 
+
+# Posterior predictive check
+pp_check(modelMR, nsamples = 100)
+
+# Sampling from the posterior
+posteriorMR <- posterior_samples(modelMR)
+
+mean(posteriorMR$b_MR)
+sd(posteriorMR$b_MR)
+
+ggplot(posteriorMR) +
+  geom_density(aes(b_MR), fill="blue", alpha=0.2) +
+  theme_minimal()
+
+print(modelMR)
+```
+
+Two predictors included
+```{r}
+# Specifying model
+ModelTwo <- bf(ACI ~ 0 + MR + VH)
+
+# Using get prior
+get_prior(ModelTwo,  d_sub, family = gaussian)
+
+# Defining priors
+prior_mTwo <- c(
+  prior(normal(1,0.5), class = sigma),
+  prior(normal(0,0.5), class = b)
+)
+
+# Specifiying a model for assessing the priors
+model_mTwo_prior <- brm(
+  formula = ModelTwo,
+  data = d_sub,
+  family = gaussian,
+  prior = prior_mTwo,
+  sample_prior="only",
+  #file = "model_prior",
+  backend="cmdstanr",
+  threads = threading(2)
+)
+
+# Checking priors using ppcheck (prior predictive check)
+pp_check(model_mTwo_prior, nsamples = 100)
+
+
+# Creating the model
+model_mTwo <- brm(
+  formula = ModelTwo,
+  data = d_sub,
+  family = gaussian,
+  prior = prior_mTwo,
+  sample_prior = T,
+  backend = "cmdstanr",
+  threads = threading(2)
+)
+
+# Visualizing the priors
+prior_mTwo <- prior_samples(model_mTwo)
+prior_mTwo %>% glimpse()
+
+## Drawing out possible predictions from the priors
+prior_mTwo %>% 
+  slice_sample(n = 50) %>% 
+  rownames_to_column("draw") %>% 
+  expand(nesting(draw, b),
+         a = c(-2, 2)) %>% 
+  mutate(d = b * a) %>% 
+
+## Plotting the lines based on the priors
+ggplot(aes(x = a, y = d)) +
+  geom_line(aes(group = draw),
+            color = "firebrick", alpha = .4) +
+  labs(x = "Diagnosis (std)",
+       y = "ALtercentric intrusion (std)") +
+  coord_cartesian(ylim = c(-2, 2)) +
+  theme_bw() +
+  theme(panel.grid = element_blank()) 
+
+# Posterior predictive check
+pp_check(model_mTwo, nsamples = 100)
+
+# Sampling from the posterior
+posterior_mTwo <- posterior_samples(model_mTwo)
+
+pairs(model_mTwo)
+
+# Creating a long format of the posterior to plot the different distributions together
+posterior_mTwo %>%
+  pivot_longer(c(b_MR, b_VH, prior_b), names_to = "Estimates") %>%
+  ggplot(aes(fill = Estimates)) +
+  
+# Plotting the prior and posterior distributions
+  geom_density(aes(value), alpha = 0.3) +
+  theme_minimal() +
+  scale_fill_discrete(name = "Estimates", labels = c("MR", "VH", "Prior")) +
+  xlab("Altercentric Intrusion (std)")
+
+print(model_mTwo)
+
+```
+
+All predictors included
+```{r}
+# Specifying model
+Model4 <- bf(ACI ~ 0 + MR + VH + APA)
+
+# Using get prior
+get_prior(Model4,  d_sub, family = gaussian)
+
+# Defining priors
+prior_def4 <- c(
+  prior(normal(1,0.5), class = sigma),
+  prior(normal(0,0.5), class = b)
+)
+
+# Specifiying a model for assessing the priors
+model_prior4 <- brm(
+  formula = Model4,
+  data = d_sub,
+  family = gaussian,
+  prior = prior_def4,
+  sample_prior="only",
+  file = "model_prior",
+  backend="cmdstanr",
+  threads = threading(2)
+)
+
+# Checking priors using ppcheck (prior predictive check)
+pp_check(model_prior4, nsamples = 100)
+
+
+# Creating the model
+model4 <- brm(
+  formula = Model4,
+  data = d_sub,
+  family = gaussian,
+  prior = prior_def4,
+  sample_prior=T,
+  backend="cmdstanr",
+  threads = threading(2)
+)
+
+# Visualizing the priors
+prior4 <- prior_samples(model4)
+prior4 %>% glimpse()
+
+## Drawing out possible predictions from the priors
+prior4 %>% 
+  slice_sample(n = 50) %>% 
+  rownames_to_column("draw") %>% 
+  expand(nesting(draw, b),
+         a = c(-2, 2)) %>% 
+  mutate(d = b * a) %>% 
+
+## Plotting the lines based on the priors
+ggplot(aes(x = a, y = d)) +
+  geom_line(aes(group = draw),
+            color = "firebrick", alpha = .4) +
+  labs(x = "Diagnosis (std)",
+       y = "ALtercentric intrusion (std)") +
+  coord_cartesian(ylim = c(-2, 2)) +
+  theme_bw() +
+  theme(panel.grid = element_blank()) 
+
+# Posterior predictive check
+pp_check(model4, nsamples = 100)
+
+# Sampling from the posterior
+posterior4 <- posterior_samples(model4)
+
+pairs(model4)
+
+# Creating a long format of the posterior to plot the different distributions together
+posterior4 %>%
+  pivot_longer(c(b_MR, b_VH, b_APA, prior_b), names_to = "Estimates") %>%
+  ggplot(aes(fill = Estimates)) +
+  
+# Plotting the prior and posterior distributions
+  geom_density(aes(value), alpha = 0.3) +
+  theme_minimal() +
+  scale_fill_discrete(name = "Estimates", labels = c("APA", "MR", "VH", "Prior")) +
+  xlab("Altercentric Intrusion (std)")
+
+print(model4)
+
+```
 
 
 
