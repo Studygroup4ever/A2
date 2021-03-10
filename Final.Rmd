@@ -680,8 +680,6 @@ sigma ~ dnorm(1, 0.5)
 
 precis(ACI_all, depth = 2)
 
-#Plotting model coefficients:
-plot(coeftab(ACI_Apath, ACI_MR, ACI_VH, ACI_VH_MR, ACI_all), par=c("b_VH","b_MR", "b_Apath"))
 
 #Here we make the models only with the schizophrenic population:
 
@@ -750,8 +748,16 @@ sigma ~ dnorm(1, 0.5)
 
 precis(ACI_all2)
 
-#You can include a nice plot of the slopes
+#Plotting model coefficients:
+plot(coeftab(ACI_Apath, ACI_MR, ACI_VH, ACI_VH_MR, ACI_all), par=c("b_VH","b_MR", "b_Apath"))
+
+#And for the schizophrenic population
 plot(coeftab(ACI_Apath2, ACI_MR2, ACI_VH2, ACI_VH_MR2, ACI_all2), par=c("b_VH","b_MR", "b_Apath"))
+
+#Potential plotting issues can be fixed by:
+# #Maybe try this solution https://github.com/rmcelreath/rethinking/issues/22
+# setMethod( "plot" , "coeftab" , function(x,y,...) coeftab_plot(x,y,...) )
+# getMethod("plot", "coeftab")
 ```
 
 
