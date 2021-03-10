@@ -395,7 +395,7 @@ plot(conditional_effects(ACI_m1, spaghetti=T, nsamples=100, method = "predict"),
 
 rbind(h1$hypothesis, h2$hypothesis, h3$hypothesis)
 
-
+?hypothesis
 
 ```
 
