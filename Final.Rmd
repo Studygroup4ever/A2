@@ -68,7 +68,7 @@ d <- read_csv("Ass2.csv") %>% mutate(
 
 ```{r}
 # Density plot
-dens(d$ACI)
+dens(d$ACI) 
 
 # Boxplot
 ggplot(d, aes(x = Diagnosis, y = ACI))+
@@ -83,8 +83,9 @@ d %>% group_by(Diagnosis_name) %>%
   ggtitle("Density of Altercentric intrusion scores per Diagnosis (std) w. color-coded
   mean lines") +
   theme_minimal() +
-  xlab("Altercentric Intrusion severity score (std)") +
-  ylab("Density") + expand_limits(x = c(-3.5, 3.5))
+  xlab("Altercentric Intrusion (std)") +
+  ylab("Density") + expand_limits(x = c(-3.5, 3.5)) + 
+  labs(fill = "Diagnosis", colour = "Diagnosis")
 
 ```
 
