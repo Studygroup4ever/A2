@@ -237,7 +237,7 @@ model_priorAPA <- brm(
   family = gaussian,
   prior = prior_defAPA,
   sample_prior="only",
-  file = "model_prior",
+  file = "model_priorAPA",
   backend="cmdstanr",
   threads = threading(2)
 )
@@ -315,7 +315,7 @@ model_priorVH <- brm(
   family = gaussian,
   prior = prior_defVH,
   sample_prior="only",
-  file = "model_prior",
+  file = "model_priorVH",
   backend="cmdstanr",
   threads = threading(2)
 )
@@ -389,7 +389,7 @@ model_priorMR <- brm(
   family = gaussian,
   prior = prior_defMR,
   sample_prior="only",
-  file = "model_prior",
+  file = "model_priorMR",
   backend="cmdstanr",
   threads = threading(2)
 )
@@ -470,7 +470,7 @@ model_prior4 <- brm(
   family = gaussian,
   prior = prior_def4,
   sample_prior="only",
-  file = "model_prior",
+  file = "model_prior4",
   backend="cmdstanr",
   threads = threading(2)
 )
@@ -551,7 +551,7 @@ model_prior5 <- brm(
   family = gaussian,
   prior = prior_def5,
   sample_prior="only",
-  file = "model_prior",
+  file = "model_prior5",
   backend="cmdstanr",
   threads = threading(2)
 )
@@ -639,7 +639,7 @@ model_prior6 <- brm(
   family = gaussian,
   prior = prior_def6,
   sample_prior="only",
-  file = "model_prior",
+  file = "model_prior6",
   backend="cmdstanr",
   threads = threading(2)
 )
