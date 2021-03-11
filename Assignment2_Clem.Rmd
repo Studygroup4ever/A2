@@ -36,7 +36,7 @@ Q1.1) Does schizophrenia involve altercentric intrusion? Define model and priors
 
 ```{r}
 #Load Packages
-pacman::p_load(tidyverse, rethinking, brms, patchwork)
+pacman::p_load(tidyverse, rethinking, brms, patchwork, dagitty)
 
 #Load data
 d <- read_csv("Ass2.csv") %>% 
@@ -383,7 +383,7 @@ Q1.2) Is altercentric intrusion related to specific symptoms *in the patients*? 
 ```{r}
 #We only want to look at the patients (Diagnosis = 2)
 d2 <- filter(d, Diagnosis == 2)
-View(d2)
+
 
 pairs( ~ ACI_scale + MR_scale + VH_scale + Apath_scale, data=d2 , col=rangi2 )
 
@@ -391,14 +391,13 @@ pairs( ~ ACI_scale + MR_scale + VH_scale + Apath_scale, data=d2 , col=rangi2 )
 ACI_MR <- quap(
 alist(
 ACI_scale ~ dnorm( mu , sigma ) ,
-mu <- a + b_MR * MR_scale,
-a ~ dnorm( 0 , 0.2 ) ,
+mu <- a[Diagnosis] + b_MR * MR_scale,
+a[Diagnosis] ~ dnorm( 0 , 0.2 ) ,
 b_MR ~ dnorm( 0 , 0.5 ) ,
 sigma ~ dnorm(1, 0.5)
-) , data = d2 )
+) , data = d )
 
-precis( ACI_MR ) #b_MR  0.12 0.10 -0.05  0.28
-
+precis( ACI_MR , depth = 2) #b_MR  0.12 0.10 -0.05  0.28
 
 
 
@@ -406,47 +405,144 @@ precis( ACI_MR ) #b_MR  0.12 0.10 -0.05  0.28
 ACI_Apath <- quap(
 alist(
 ACI_scale ~ dnorm( mu , sigma ) ,
-mu <- a + b_Apath * Apath_scale,
-a ~ dnorm( 0 , 0.2 ) ,
+mu <- a[Diagnosis] + b_Apath * Apath_scale,
+a[Diagnosis] ~ dnorm( 0 , 0.2 ) ,
 b_Apath ~ dnorm( 0 , 0.5 ) ,
 sigma ~ dnorm(1, 0.5)
-) , data = d2 )
+) , data = d )
 
-precis(ACI_Apath) #b_Apath -0.09 0.12 -0.28  0.10
+precis(ACI_Apath, depth = 2) #b_Apath -0.09 0.12 -0.28  0.10
 
 #Model with voice hearing
 ACI_VH <- quap(
 alist(
 ACI_scale ~ dnorm( mu , sigma ) ,
-mu <- a + b_VH * VH_scale,
-a ~ dnorm( 0 , 0.2 ) ,
+mu <- a[Diagnosis] + b_VH * VH_scale,
+a[Diagnosis] ~ dnorm( 0 , 0.2 ) ,
 b_VH ~ dnorm( 0 , 0.5 ) ,
 sigma ~ dnorm(1, 0.5)
-) , data = d2 )
+) , data = d )
 
-precis(ACI_VH) #b_VH  0.14 0.12 -0.05  0.33
+precis(ACI_VH, depth = 2) #b_VH  0.14 0.12 -0.05  0.33
+
+#Model with voice hearing
+ACI_VH <- quap(
+alist(
+ACI_scale ~ dnorm( mu , sigma ) ,
+mu <- a[Diagnosis] + b_VH * VH_scale,
+a[Diagnosis] ~ dnorm( 0 , 0.2 ) ,
+b_VH ~ dnorm( 0 , 0.5 ) ,
+sigma ~ dnorm(1, 0.5)
+) , data = d )
+
+precis(ACI_VH, depth = 2)
+
+#Model with voice hearing + Mindreading
+ACI_VH_MR <- quap(
+alist(
+ACI_scale ~ dnorm( mu , sigma ) ,
+mu <- a[Diagnosis] + b_VH * VH_scale + b_MR * MR_scale,
+a[Diagnosis] ~ dnorm( 0 , 0.2 ) ,
+b_VH ~ dnorm( 0 , 0.5 ) ,
+b_MR ~ dnorm(0, 0.5),
+sigma ~ dnorm(1, 0.5)
+) , data = d )
+
+precis(ACI_VH_MR, depth = 2)
 
 #Does it make sense to make a model with all or some of the predictors when none of them seem to be very certain? FUck it we try
 
 ACI_all <- quap(
 alist(
 ACI_scale ~ dnorm( mu , sigma ) ,
-mu <- a + b_VH * VH_scale + b_MR * MR_scale + b_Apath * Apath_scale,
-a ~ dnorm( 0 , 0.2 ) ,
+mu <- a[Diagnosis] + b_VH * VH_scale + b_MR * MR_scale + b_Apath * Apath_scale,
+a[Diagnosis] ~ dnorm( 0 , 0.2 ) ,
+b_VH ~ dnorm( 0 , 0.5 ) ,
+b_MR ~ dnorm(0, 0.5),
+b_Apath ~ dnorm(0, 0.5),
+sigma ~ dnorm(1, 0.5)
+) , data = d )
+
+precis(ACI_all, depth = 2) #The estimates are still all too uncertain to say anything about.
+
+
+plot(coeftab(ACI_Apath, ACI_MR, ACI_VH, ACI_VH_MR, ACI_all), par=c("b_VH","b_MR", "b_Apath"))
+
+
+###NOW doing it with the full dataset to compare
+#Model with Mindreading
+ACI_MR2 <- quap(
+alist(
+ACI_scale ~ dnorm( mu , sigma ) ,
+mu <- b_MR * MR_scale,
+#a ~ dnorm( 0 , 0.2 ) ,
+b_MR ~ dnorm( 0 , 0.5 ) ,
+sigma ~ dnorm(1, 0.5)
+) , data = d2 )
+
+precis( ACI_MR2 ) #b_MR  0.12 0.10 -0.05  0.28
+
+
+
+
+#Model with apathy - not gonna do this with brms because..
+ACI_Apath2 <- quap(
+alist(
+ACI_scale ~ dnorm( mu , sigma ) ,
+mu <- b_Apath * Apath_scale,
+#a ~ dnorm( 0 , 0.2 ) ,
+b_Apath ~ dnorm( 0 , 0.5 ) ,
+sigma ~ dnorm(1, 0.5)
+) , data = d2 )
+
+precis(ACI_Apath2) #b_Apath -0.09 0.12 -0.28  0.10
+
+#Model with voice hearing
+ACI_VH2 <- quap(
+alist(
+ACI_scale ~ dnorm( mu , sigma ) ,
+mu <- b_VH * VH_scale,
+#a ~ dnorm( 0 , 0.2 ) ,
+b_VH ~ dnorm( 0 , 0.5 ) ,
+sigma ~ dnorm(1, 0.5)
+) , data = d2 )
+
+precis(ACI_VH2) #b_VH  0.14 0.12 -0.05  0.33
+
+#Does it make sense to make a model with all or some of the predictors when none of them seem to be very certain? FUck it we try
+
+#Model with voice hearing
+ACI_VH_MR2 <- quap(
+alist(
+ACI_scale ~ dnorm( mu , sigma ) ,
+mu <- b_VH * VH_scale + b_MR * MR_scale,
+#a ~ dnorm( 0 , 0.2 ) ,
+b_VH ~ dnorm( 0 , 0.5 ) ,
+b_MR ~ dnorm(0, 0.5),
+sigma ~ dnorm(1, 0.5)
+) , data = d2 )
+
+precis(ACI_VH_MR2)
+
+ACI_all2 <- quap(
+alist(
+ACI_scale ~ dnorm( mu , sigma ) ,
+mu <- b_VH * VH_scale + b_MR * MR_scale + b_Apath * Apath_scale,
+#a ~ dnorm( 0 , 0.2 ) ,
 b_VH ~ dnorm( 0 , 0.5 ) ,
 b_MR ~ dnorm(0, 0.5),
 b_Apath ~ dnorm(0, 0.5),
 sigma ~ dnorm(1, 0.5)
 ) , data = d2 )
 
-precis(ACI_all) #The estimates are still all too uncertain to say anything about.
+precis(ACI_all2) #The estimates are still all too uncertain to say anything about. ##Not true when we include the full dataset
 
 #You can include a nice plot of the slopes
-plot( coeftab(m5.1,m5.2,m5.3), par=c("bA","bM") )
+plot(coeftab(ACI_Apath2, ACI_MR2, ACI_VH2, ACI_VH_MR2, ACI_all2), par=c("b_VH","b_MR", "b_Apath"))
 
-
-
-
+  # #Maybe try this solution https://github.com/rmcelreath/rethinking/issues/22
+# setMethod( "plot" , "coeftab" , function(x,y,...) coeftab_plot(x,y,...) )
+# getMethod("plot", "coeftab")
 
 ```
 
@@ -497,19 +593,101 @@ Q2.1) However, we know that the diagnosis is based on symptom assessment: if the
 ```{r}
 
 
-plant_dag <- dagitty( "dag {
-H_0 -> H_1
-F -> H_1
-T -> F
+ACI_dag <- dagitty( "dag {
+Apathy -> Sum_of_Symptoms
+MindRead -> Sum_of_Symptoms
+VoiceHearing -> Sum_of_Symptoms
+Sum_of_Symptoms -> Diagnosis
+MindRead -> Altercentric_Intrusion
+Voice_Hearing -> Altercentric_Intrusion
+Diagnosis -> Altercentric_Intrusion
 }")
-coordinates( plant_dag ) <- list( x=c(H_0=0,T=2,F=1.5,H_1=1) ,
-y=c(H_0=0,T=0,F=0,H_1=0) )
-drawdag( plant_dag )
+coordinates( ACI_dag ) <- list( x=c(Apathy=0,Mindread=1,VoiceHearing=2, Diagnosis = 1, Altercentric_Intrusion = 0, Sum_of_Symptoms=1) ,
+y=c(Apathy=1,Mindread=1,VoiceHearing=1,Diagnosis=0, Sum_of_Symptoms=1) )
+drawdag( ACI_dag )
 
+#Søren's DAG
+dagS1 <- dagitty("dag {
+Unobserved -> Apathy
+Unobserved -> Mind.Reading
+Unobserved -> Voice.Hearing
+Voice.Hearing -> Sum.of.Symptoms
+Mind.Reading -> Sum.of.Symptoms
+Apathy -> Sum.of.Symptoms
+Sum.of.Symptoms -> Dignosis
+Voice.Hearing -> Altercentric.Intrusion
+Mind.Reading -> Altercentric.Intrusion
+Apathy -> Altercentric.Intrusion
+}")
+
+coordinates(dagS1) <- list(
+  x = c(
+    Unobserved = 1,
+    Apathy = 0,
+    Mind.Reading = 1,
+    Voice.Hearing = 2,
+    Sum.of.Symptoms = 1,
+    Dignosis = 1,
+    Altercentric.Intrusion = 2
+  ),
+  y = c(
+    Unobserved = 1,
+    Apathy = 2,
+    Mind.Reading = 2,
+    Voice.Hearing = 2,
+    Sum.of.Symptoms = 3,
+    Dignosis = 4,
+    Altercentric.Intrusion = 3
+  )
+)
+
+drawdag(dagS1)
+
+dagS2 <- dagitty("dag {
+Unobserved -> Apathy
+Unobserved -> Mind.Reading
+Unobserved -> Voice.Hearing
+Voice.Hearing -> Sum.of.Symptoms
+Mind.Reading -> Sum.of.Symptoms
+Apathy -> Sum.of.Symptoms
+Sum.of.Symptoms -> Dignosis
+Voice.Hearing -> Altercentric.Intrusion
+Mind.Reading -> Altercentric.Intrusion
+}")
+
+coordinates(dagS2) <- list(
+  x = c(
+    Unobserved = 1,
+    Apathy = 0,
+    Mind.Reading = 1,
+    Voice.Hearing = 2,
+    Sum.of.Symptoms = 1,
+    Dignosis = 1,
+    Altercentric.Intrusion = 2
+  ),
+  y = c(
+    Unobserved = 1,
+    Apathy = 2,
+    Mind.Reading = 2,
+    Voice.Hearing = 2,
+    Sum.of.Symptoms = 3,
+    Dignosis = 4,
+    Altercentric.Intrusion = 3
+  )
+)
+
+drawdag(dagS2) 
 ```
 
 
 Q2.2.) Redesign your analysis following the graph and report how the results change
+```{r}
+
+
+
+
+
+```
 
 
 ## Third part
@@ -538,7 +716,7 @@ Sigma <- matrix(data=c(1,SymptomCorr,SymptomCorr,EffectCorrRel,
                        SymptomCorr,SymptomCorr,1,EffectCorrIrrel,
                        EffectCorrRel,EffectCorrRel,EffectCorrIrrel,1),
                        nrow=4,ncol=4)
-
+View(Sigma)
 ## Generate data from a multivariate (mvr) normal (n) distribution
 d <- mvrnorm(n = n, # number of participant
         mu = c(1.2, 1.2, 1.2, 4), # mean of each variable
@@ -551,7 +729,7 @@ d <- data.frame(
   Apathy =  d[,3], 
   AltercentricIntrusion = d[,4],
   ID = seq(nrow(d)))
-
+View(d)
 # Assessing whether the participant has schizophrenia (high enough sum of symptoms)
 # Here we choose participants scoring above 75% percentile (the most severe ones)
 d$Diagnosis <- 0
