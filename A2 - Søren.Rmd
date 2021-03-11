@@ -589,75 +589,87 @@ d %>%
 
 ```{r}
 dagS1 <- dagitty("dag {
-Unobserved -> Apathy
-Unobserved -> Mind.Reading
-Unobserved -> Voice.Hearing
-Voice.Hearing -> Sum.of.Symptoms
-Mind.Reading -> Sum.of.Symptoms
-Apathy -> Sum.of.Symptoms
-Sum.of.Symptoms -> Dignosis
-Voice.Hearing -> Altercentric.Intrusion
-Mind.Reading -> Altercentric.Intrusion
-Apathy -> Altercentric.Intrusion
+VH -> Diagnosis
+MR -> Diagnosis
+Apathy -> Diagnosis
+VH -> ACI
+MR -> ACI
+Apathy -> ACI
 }")
 
 coordinates(dagS1) <- list(
   x = c(
-    Unobserved = 1,
     Apathy = 0,
-    Mind.Reading = 1,
-    Voice.Hearing = 2,
-    Sum.of.Symptoms = 1,
-    Dignosis = 1,
-    Altercentric.Intrusion = 2
+    MR = 1,
+    VH = 2,
+    Diagnosis = 0.5,
+    ACI = 1.5
   ),
   y = c(
-    Unobserved = 1,
-    Apathy = 2,
-    Mind.Reading = 2,
-    Voice.Hearing = 2,
-    Sum.of.Symptoms = 3,
-    Dignosis = 4,
-    Altercentric.Intrusion = 3
+    Apathy = 1,
+    MR = 1,
+    VH = 1,
+    Diagnosis = 2,
+    ACI = 2
   )
 )
 
 drawdag(dagS1)
 
 dagS2 <- dagitty("dag {
-Unobserved -> Apathy
-Unobserved -> Mind.Reading
-Unobserved -> Voice.Hearing
-Voice.Hearing -> Sum.of.Symptoms
-Mind.Reading -> Sum.of.Symptoms
-Apathy -> Sum.of.Symptoms
-Sum.of.Symptoms -> Dignosis
-Voice.Hearing -> Altercentric.Intrusion
-Mind.Reading -> Altercentric.Intrusion
+VH -> Diagnosis
+MR -> Diagnosis
+Apathy -> Diagnosis
+VH -> ACI
+MR -> ACI
 }")
 
 coordinates(dagS2) <- list(
   x = c(
-    Unobserved = 1,
     Apathy = 0,
-    Mind.Reading = 1,
-    Voice.Hearing = 2,
-    Sum.of.Symptoms = 1,
-    Dignosis = 1,
-    Altercentric.Intrusion = 2
+    MR = 1,
+    VH = 2,
+    Diagnosis = 0.5,
+    ACI = 1.5
   ),
   y = c(
-    Unobserved = 1,
-    Apathy = 2,
-    Mind.Reading = 2,
-    Voice.Hearing = 2,
-    Sum.of.Symptoms = 3,
-    Dignosis = 4,
-    Altercentric.Intrusion = 3
+    Apathy = 1,
+    MR = 1,
+    VH = 1,
+    Diagnosis = 2,
+    ACI = 2
   )
 )
 
 drawdag(dagS2) 
+
+dagS3 <- dagitty("dag {
+VH <- Diagnosis
+MR <- Diagnosis
+Apathy <- Diagnosis
+VH -> ACI
+MR -> ACI
+}")
+
+coordinates(dagS3) <- list(
+  x = c(
+    Apathy = 0,
+    MR = 1,
+    VH = 2,
+    Diagnosis = 0.5,
+    ACI = 1.5
+  ),
+  y = c(
+    Apathy = 1,
+    MR = 1,
+    VH = 1,
+    Diagnosis = 2,
+    ACI = 2
+  )
+)
+
+drawdag(dagS3)
+
 
 ```
 
@@ -682,7 +694,8 @@ Q3.2) OPTIONAL: is this a general pattern? Try varying the parameters (e.g. corr
 ```{r}
 pacman::p_load(MASS, tidyverse, psych)
 
-seed <- 1981 # Defining a seed so the results are always the same
+seed <- 1981 # Defining a seed so the results are always the same 
+# set.seed(1981)
 n <- 300 # Defining the amount of participants
 
 SymptomCorr <- .2 # Defining the correlation of symptoms (as they tend to co-occur)
@@ -727,3 +740,6 @@ pairs.panels(d1)
 write_csv(d, "data/Ass2.csv")
 ```
 
+
+
+Alternatively, because VH and MR cause ACI, when ACI is high, so is VH and MR, which, beacuse of the selection-distortion-effect, predicts Apathy to be lower.

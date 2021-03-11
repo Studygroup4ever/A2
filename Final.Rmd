@@ -599,41 +599,38 @@ Assessing evidence for the different hypothesis:
 
 ```{r}
 # for model APA
-hypothesis(modelAPA, "APA > 0")
-hypothesis(modelAPA, "APA < 0")
-hypothesis(modelAPA, "APA = 0")
+hypothesis(modelAPA, c("APA > 0", 
+                       "APA < 0", 
+                       "APA = 0"))
 
 # for model VH
-hypothesis(modelVH, "VH > 0")
-hypothesis(modelVH, "VH < 0")
-hypothesis(modelVH, "VH = 0")
+hypothesis(modelVH, c("VH > 0", 
+                      "VH < 0", 
+                      "VH = 0"))
 
 # for model MR
-hypothesis(modelMR, "MR > 0")
-hypothesis(modelMR, "MR < 0")
-hypothesis(modelMR, "MR = 0")
+hypothesis(modelMR, c("MR > 0", 
+                      "MR < 0", 
+                      "MR = 0"))
 
 # for model with MR and VH
-hypothesis(model_mTwo, "MR > 0")
-hypothesis(model_mTwo, "MR < 0")
-hypothesis(model_mTwo, "MR = 0")
-
-hypothesis(model_mTwo, "VH > 0")
-hypothesis(model_mTwo, "VH < 0")
-hypothesis(model_mTwo, "VH = 0")
+hypothesis(model_mTwo, c("MR > 0", 
+                         "MR < 0", 
+                         "MR = 0",
+                         "VH > 0",
+                         "VH < 0",
+                         "VH = 0"))
 
 # for model with all symptoms 
-hypothesis(model4, "MR > 0")
-hypothesis(model4, "MR < 0")
-hypothesis(model4, "MR = 0")
-
-hypothesis(model4, "VH > 0")
-hypothesis(model4, "VH < 0")
-hypothesis(model4, "VH = 0")
-
-hypothesis(model4, "APA > 0")
-hypothesis(model4, "APA < 0")
-hypothesis(model4, "APA = 0")
+hypothesis(model4, c("MR > 0",
+                     "MR < 0",
+                     "MR = 0",
+                     "VH > 0",
+                     "VH < 0",
+                     "VH = 0",
+                     "APA > 0",
+                     "APA < 0",
+                     "APA = 0"))
 
 ```
 
@@ -650,65 +647,72 @@ d2 <- d_sub #Only schizophrenic
 
 #Model with Mindreading
 m_MR_full <- quap(
-alist(
-ACI_scale ~ dnorm( mu , sigma ) ,
-mu <- a[Diagnosis] + b_MR * MR_scale,
-a[Diagnosis] ~ dnorm( 0 , 0.2 ) , #prior 
-b_MR ~ dnorm( 0 , 0.5 ) ,
-sigma ~ dnorm(1, 0.5)
-) , data = data_quap )
+  alist(
+    ACI_scale ~ dnorm(mu , sigma) ,
+    mu <- a[Diagnosis] + b_MR * MR_scale,
+    a[Diagnosis] ~ dnorm(0 , 0.2) ,
+    #prior
+    b_MR ~ dnorm(0 , 0.5) ,
+    sigma ~ dnorm(1, 0.5)) ,
+  data = data_quap
+)
 
-precis( m_MR_full , depth = 2)
+precis(m_MR_full , depth = 2)
 
 
 #Model with Apathy
 m_APA_full <- quap(
-alist(
-ACI_scale ~ dnorm( mu , sigma ) ,
-mu <- a[Diagnosis] + b_Apath * Apath_scale,
-a[Diagnosis] ~ dnorm( 0 , 0.2 ) ,
-b_Apath ~ dnorm( 0 , 0.5 ) ,
-sigma ~ dnorm(1, 0.5)
-) , data = data_quap )
+  alist(
+    ACI_scale ~ dnorm(mu , sigma) ,
+    mu <- a[Diagnosis] + b_Apath * Apath_scale,
+    a[Diagnosis] ~ dnorm(0 , 0.2) ,
+    b_Apath ~ dnorm(0 , 0.5) ,
+    sigma ~ dnorm(1, 0.5)) ,
+  data = data_quap
+)
 
 precis(m_APA_full, depth = 2) 
 
 #Model with voice hearing
 m_VH_full <- quap(
-alist(
-ACI_scale ~ dnorm( mu , sigma ) ,
-mu <- a[Diagnosis] + b_VH * VH_scale,
-a[Diagnosis] ~ dnorm( 0 , 0.2 ) ,
-b_VH ~ dnorm( 0 , 0.5 ) ,
-sigma ~ dnorm(1, 0.5)
-) , data = data_quap )
+  alist(
+    ACI_scale ~ dnorm(mu , sigma) ,
+    mu <- a[Diagnosis] + b_VH * VH_scale,
+    a[Diagnosis] ~ dnorm(0 , 0.2) ,
+    b_VH ~ dnorm(0 , 0.5) ,
+    sigma ~ dnorm(1, 0.5)) ,
+  data = data_quap
+)
 
 precis(m_VH_full, depth = 2)
 
 #Model with voice hearing + Mindreading
 m_VH_MR_full <- quap(
-alist(
-ACI_scale ~ dnorm( mu , sigma ) ,
-mu <- a[Diagnosis] + b_VH * VH_scale + b_MR * MR_scale,
-a[Diagnosis] ~ dnorm( 0 , 0.2 ) ,
-b_VH ~ dnorm( 0 , 0.5 ) ,
-b_MR ~ dnorm(0, 0.5),
-sigma ~ dnorm(1, 0.5)
-) , data = data_quap )
+  alist(
+    ACI_scale ~ dnorm(mu , sigma) ,
+    mu <- a[Diagnosis] + b_VH * VH_scale + b_MR * MR_scale,
+    a[Diagnosis] ~ dnorm(0 , 0.2) ,
+    b_VH ~ dnorm(0 , 0.5) ,
+    b_MR ~ dnorm(0, 0.5),
+    sigma ~ dnorm(1, 0.5)) ,
+  data = data_quap
+)
 
 precis(m_VH_MR_full, depth = 2)
 
 #Model including all predictors
 m_ALL_full <- quap(
-alist(
-ACI_scale ~ dnorm( mu , sigma ) ,
-mu <- a[Diagnosis] + b_VH * VH_scale + b_MR * MR_scale + b_Apath * Apath_scale,
-a[Diagnosis] ~ dnorm( 0 , 0.2 ) ,
-b_VH ~ dnorm( 0 , 0.5 ) ,
-b_MR ~ dnorm(0, 0.5),
-b_Apath ~ dnorm(0, 0.5),
-sigma ~ dnorm(1, 0.5)
-) , data = data_quap )
+  alist(
+    ACI_scale ~ dnorm(mu , sigma) ,
+    mu <-
+      a[Diagnosis] + b_VH * VH_scale + b_MR * MR_scale + b_Apath * Apath_scale,
+    a[Diagnosis] ~ dnorm(0 , 0.2) ,
+    b_VH ~ dnorm(0 , 0.5) ,
+    b_MR ~ dnorm(0, 0.5),
+    b_Apath ~ dnorm(0, 0.5),
+    sigma ~ dnorm(1, 0.5)) ,
+  data = data_quap
+)
 
 precis(m_ALL_full, depth = 2)
 
@@ -716,67 +720,68 @@ precis(m_ALL_full, depth = 2)
 #Here we make the models only with the schizophrenic population:
 
 #Model with Mindreading
-m_MR_schz <- quap(
-alist(
-ACI_scale ~ dnorm( mu , sigma ) ,
-mu <- b_MR * MR_scale,
-#a ~ dnorm( 0 , 0.2 ) , #No intercept when we only have one level of diagnosis
-b_MR ~ dnorm( 0 , 0.5 ) ,
-sigma ~ dnorm(1, 0.5)
-) , data = d2 )
+m_MR_schz <- quap(alist(
+  ACI_scale ~ dnorm(mu , sigma) ,
+  mu <- b_MR * MR_scale,
+  #a ~ dnorm( 0 , 0.2 ) , #No intercept when we only have one level of diagnosis
+  b_MR ~ dnorm(0 , 0.5) ,
+  sigma ~ dnorm(1, 0.5)) ,
+data = d2)
 
-precis( m_MR_schz )
+precis(m_MR_schz)
 
 
 #Model with apathy - not gonna do this with brms because..
 m_APA_schz <- quap(
-alist(
-ACI_scale ~ dnorm( mu , sigma ) ,
-mu <- b_Apath * Apath_scale,
-#a ~ dnorm( 0 , 0.2 ) ,
-b_Apath ~ dnorm( 0 , 0.5 ) ,
-sigma ~ dnorm(1, 0.5)
-) , data = d2 )
+  alist(
+    ACI_scale ~ dnorm(mu , sigma) ,
+    mu <- b_Apath * Apath_scale,
+    #a ~ dnorm( 0 , 0.2 ) ,
+    b_Apath ~ dnorm(0 , 0.5) ,
+    sigma ~ dnorm(1, 0.5)) ,
+  data = d2
+)
 
 precis(m_APA_schz)
 
 #Model with voice hearing
-m_VH_schz <- quap(
-alist(
-ACI_scale ~ dnorm( mu , sigma ) ,
-mu <- b_VH * VH_scale,
-#a ~ dnorm( 0 , 0.2 ) ,
-b_VH ~ dnorm( 0 , 0.5 ) ,
-sigma ~ dnorm(1, 0.5)
-) , data = d2 )
+m_VH_schz <- quap(alist(
+  ACI_scale ~ dnorm(mu , sigma) ,
+  mu <- b_VH * VH_scale,
+  #a ~ dnorm( 0 , 0.2 ) ,
+  b_VH ~ dnorm(0 , 0.5) ,
+  sigma ~ dnorm(1, 0.5)) ,
+data = d2)
 
 precis(m_VH_schz)
 
 
 #Model with voice hearing
 m_VH_MR_schz <- quap(
-alist(
-ACI_scale ~ dnorm( mu , sigma ) ,
-mu <- b_VH * VH_scale + b_MR * MR_scale,
-#a ~ dnorm( 0 , 0.2 ) ,
-b_VH ~ dnorm( 0 , 0.5 ) ,
-b_MR ~ dnorm(0, 0.5),
-sigma ~ dnorm(1, 0.5)
-) , data = d2 )
+  alist(
+    ACI_scale ~ dnorm(mu , sigma) ,
+    mu <- b_VH * VH_scale + b_MR * MR_scale,
+    #a ~ dnorm( 0 , 0.2 ) ,
+    b_VH ~ dnorm(0 , 0.5) ,
+    b_MR ~ dnorm(0, 0.5),
+    sigma ~ dnorm(1, 0.5)) ,
+  data = d2
+)
 
 precis(m_VH_MR_schz)
 
 #Model with all predictors:
 m_ALL_schz <- quap(
-alist(
-ACI_scale ~ dnorm( mu , sigma ) ,
-mu <- b_VH * VH_scale + b_MR * MR_scale + b_Apath * Apath_scale,
-#a ~ dnorm( 0 , 0.2 ) , #
-b_VH ~ dnorm( 0 , 0.5 ) ,
-b_MR ~ dnorm(0, 0.5),
-b_Apath ~ dnorm(0, 0.5),
-sigma ~ dnorm(1, 0.5)
-) , data = d2 )
+  alist(
+    ACI_scale ~ dnorm(mu , sigma) ,
+    mu <- b_VH * VH_scale + b_MR * MR_scale + b_Apath * Apath_scale,
+    #a ~ dnorm( 0 , 0.2 ) , #
+    b_VH ~ dnorm(0 , 0.5) ,
+    b_MR ~ dnorm(0, 0.5),
+    b_Apath ~ dnorm(0, 0.5),
+    sigma ~ dnorm(1, 0.5)) ,
+  data = d2
+)
 
 precis(m_ALL_schz)
 
@@ -877,6 +882,98 @@ coordinates(dagS3) <- list(
 drawdag(dagS3)
 ```
 
+```{r}
+# Specifying model
+Model6 <- bf(ACI ~ 0 + VH + MR)
+
+# Using get prior
+get_prior(Model6,  d, family = gaussian)
+
+# Defining priors
+prior_def6 <- c(
+  prior(normal(1,0.5), class = sigma),
+  prior(normal(0,0.5), class = b)
+)
+
+# Specifiying a model for assessing the priors
+model_prior6 <- brm(
+  formula = Model6,
+  data = d,
+  family = gaussian,
+  prior = prior_def6,
+  sample_prior="only",
+  #file = "model_prior",
+  backend="cmdstanr",
+  threads = threading(2)
+)
+
+# Checking priors using ppcheck (prior predictive check)
+pp_check(model_prior6, nsamples = 100)
+
+
+# Creating the model
+model6 <- brm(
+  formula = Model6,
+  data = d,
+  family = gaussian,
+  prior = prior_def6,
+  sample_prior=T,
+  backend="cmdstanr",
+  threads = threading(2)
+)
+
+# Visualizing the priors
+prior6 <- prior_samples(model6)
+prior6 %>% glimpse()
+
+## Drawing out possible predictions from the priors
+prior6 %>% 
+  slice_sample(n = 50) %>% 
+  rownames_to_column("draw") %>% 
+  expand(nesting(draw, b),
+         a = c(-2, 2)) %>% 
+  mutate(d = b * a) %>% 
+
+## Plotting the lines based on the priors
+ggplot(aes(x = a, y = d)) +
+  geom_line(aes(group = draw),
+            color = "firebrick", alpha = .4) +
+  labs(x = "Change in Experimental Group",
+       y = "Altercentric Intrusion (std)") +
+  coord_cartesian(ylim = c(-2, 2)) +
+  theme_bw() +
+  theme(panel.grid = element_blank()) 
+
+# Posterior predictive check
+pp_check(model6, nsamples = 100)
+
+pairs(model6)
+
+# Sampling from the posterior
+posterior_samples(model6) %>% 
+
+# Creating a long format of the posterior to plot the different distributions together
+  pivot_longer(c(b_MR, b_VH, prior_b), names_to = "Estimates") %>%
+  
+# Plotting the prior and posterior distributions
+  ggplot(aes(fill = Estimates)) +
+  geom_density(aes(value), alpha = 0.3) +
+  theme_minimal() +
+  scale_fill_discrete(name = "Estimates", labels = c("MR", "VH", "Prior")) +
+  xlab("Altercentric Intrusion (std)")
+
+
+ggplot(posterior6) +
+  geom_density(aes(b_MR), fill="blue", alpha=0.2)+
+  geom_density(aes(b_VH), fill = "red", alpha = 0.2)+
+  geom_density(aes(prior_b), fill = "grey", alpha = 0.2)+
+  theme_minimal()+
+  ggtitle("ACI ~ 0 + Mindreading + VoiceHearing, All participants")
+
+print(model6)
+
+hypothesis(model6, c("MR > 0","MR < 0","MR = 0", "VH > 0" ,"VH < 0","VH = 0" ))
+```
 
 
 
