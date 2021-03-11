@@ -11,7 +11,7 @@ knitr::opts_chunk$set(echo = TRUE)
 
 #### Load data & packages
 ```{r}
-pacman::p_load(tidyverse,brms,rethinking)
+pacman::p_load(tidyverse,brms,rethinking, tidybayes)
 
 data <- read_csv("Ass2.csv")
 ```
@@ -273,7 +273,7 @@ ggplot(aes(x = a, y = d)) +
   geom_line(aes(group = draw),
             color = "firebrick", alpha = .4) +
   labs(x = "Diagnosis (std)",
-       y = "ALtercentric intrusion (std)") +
+       y = "Altercentric intrusion (std)") +
   coord_cartesian(ylim = c(-2, 2)) +
   theme_bw() +
   theme(panel.grid = element_blank()) 
@@ -282,7 +282,7 @@ ggplot(aes(x = a, y = d)) +
 pp_check(modelAPA, nsamples = 100)
 
 # Sampling from the posterior
-posteriorVH <- posterior_samples(modelVH)
+posteriorAPA <- posterior_samples(modelAPA)
 
 mean(posteriorAPA$b_APA_scale)
 sd(posteriorAPA$b_APA_scale)
@@ -293,6 +293,8 @@ ggplot(posteriorAPA) +
 
 print(modelAPA)
 
+
+hypothesis(modelAPA, c("APA_scale > 0","APA_scale < 0","APA_scale = 0"))
 ```
 
 ### Voicehearing
@@ -349,7 +351,7 @@ ggplot(aes(x = a, y = d)) +
   geom_line(aes(group = draw),
             color = "firebrick", alpha = .4) +
   labs(x = "Diagnosis (std)",
-       y = "ALtercentric intrusion (std)") +
+       y = "Altercentric intrusion (std)") +
   coord_cartesian(ylim = c(-2, 2)) +
   theme_bw() +
   theme(panel.grid = element_blank()) 
@@ -369,6 +371,7 @@ ggplot(posteriorVH) +
 
 print(modelVH)
 
+hypothesis(modelVH, c("VH_scale > 0","VH_scale < 0","VH_scale = 0"))
 ```
 ### Mindreading
 ```{r}
@@ -422,7 +425,7 @@ ggplot(aes(x = a, y = d)) +
   geom_line(aes(group = draw),
             color = "firebrick", alpha = .4) +
   labs(x = "Diagnosis (std)",
-       y = "ALtercentric intrusion (std)") +
+       y = "Altercentric intrusion (std)") +
   coord_cartesian(ylim = c(-2, 2)) +
   theme_bw() +
   theme(panel.grid = element_blank()) 
@@ -441,12 +444,15 @@ ggplot(posteriorMR) +
   theme_minimal()
 
 print(modelMR)
+
+hypothesis(modelMR, c("MR_scale > 0","MR_scale < 0","MR_scale = 0"))
+
 ```
 
 Both predictors included
 ```{r}
 # Specifying model
-Model4 <- bf(ACI_scale ~ 0 + MR_scale + VH_scale + APA_scale)
+Model4 <- bf(ACI_scale ~ 0 + VH_scale + MR_scale)
 
 # Using get prior
 get_prior(Model4,  data_2, family = gaussian)
@@ -516,15 +522,96 @@ pairs(model4)
 
 ggplot(posterior4) +
   geom_density(aes(b_MR_scale), fill="blue", alpha=0.2)+
-  geom_density(aes(b_APA_scale),fill = "green", alpha = 0.2)+ 
   geom_density(aes(b_VH_scale), fill = "red", alpha = 0.2)+
   geom_density(aes(prior_b), fill = "grey", alpha = 0.2)+
-  theme_minimal()
+  theme_minimal()+
+  ggtitle("Posterior predictive distribution: ACI ~ 0 + Mindreading + VoiceHearing")
 
 print(model4)
 
 
 ```
+```{r}
+# Specifying model
+Model5 <- bf(ACI_scale ~ 0 + VH_scale + MR_scale + APA_scale)
+
+# Using get prior
+get_prior(Model5,  data_2, family = gaussian)
+
+# Defining priors
+prior_def5 <- c(
+  prior(normal(1,0.5), class = sigma),
+  prior(normal(0,0.5), class = b)
+)
+
+# Specifiying a model for assessing the priors
+model_prior5 <- brm(
+  formula = Model5,
+  data = data_2,
+  family = gaussian,
+  prior = prior_def5,
+  sample_prior="only",
+  file = "model_prior",
+  backend="cmdstanr",
+  threads = threading(2)
+)
+
+# Checking priors using ppcheck (prior predictive check)
+pp_check(model_prior5, nsamples = 100)
+
+
+# Creating the model
+model5 <- brm(
+  formula = Model5,
+  data = data_2,
+  family = gaussian,
+  prior = prior_def5,
+  sample_prior=T,
+  backend="cmdstanr",
+  threads = threading(2)
+)
+
+# Visualizing the priors
+prior5 <- prior_samples(model5)
+prior5 %>% glimpse()
+
+## Drawing out possible predictions from the priors
+prior5 %>% 
+  slice_sample(n = 50) %>% 
+  rownames_to_column("draw") %>% 
+  expand(nesting(draw, b),
+         a = c(-2, 2)) %>% 
+  mutate(d = b * a) %>% 
+
+## Plotting the lines based on the priors
+ggplot(aes(x = a, y = d)) +
+  geom_line(aes(group = draw),
+            color = "firebrick", alpha = .5) +
+  labs(x = "Diagnosis (std)",
+       y = "ALtercentric intrusion (std)") +
+  coord_cartesian(ylim = c(-2, 2)) +
+  theme_bw() +
+  theme(panel.grid = element_blank()) 
+
+# Posterior predictive check
+pp_check(model5, nsamples = 100)
+
+# Sampling from the posterior
+posterior5 <- posterior_samples(model5)
+
+pairs(model5)
+
+ggplot(posterior5) +
+  geom_density(aes(b_MR_scale), fill="blue", alpha=0.2)+
+  geom_density(aes(b_VH_scale), fill = "red", alpha = 0.2)+
+  geom_density(aes(b_APA_scale), fill = "green", alpha = 0.2)+
+  geom_density(aes(prior_b), fill = "grey", alpha = 0.2)+
+  theme_minimal() +
+  ggtitle("Posterior predictive destributions: ACI ~ 0 + Mindreading + VoiceHearing + Apathy")
+
+print(model5)
+```
+
 ## Second part
 
 ### Q2.1) 
@@ -532,5 +619,86 @@ However, we know that the diagnosis is based on symptom assessment: if the overa
 
 ### Q2.2.) 
 Redesign your analysis following the graph and report how the results change
+```{r}
+# Specifying model
+Model6 <- bf(ACI_scale ~ 0 + VH_scale + MR_scale)
+
+# Using get prior
+get_prior(Model6,  data, family = gaussian)
+
+# Defining priors
+prior_def6 <- c(
+  prior(normal(1,0.5), class = sigma),
+  prior(normal(0,0.5), class = b)
+)
+
+# Specifiying a model for assessing the priors
+model_prior6 <- brm(
+  formula = Model6,
+  data = data,
+  family = gaussian,
+  prior = prior_def6,
+  sample_prior="only",
+  file = "model_prior",
+  backend="cmdstanr",
+  threads = threading(2)
+)
+
+# Checking priors using ppcheck (prior predictive check)
+pp_check(model_prior6, nsamples = 100)
+
+
+# Creating the model
+model6 <- brm(
+  formula = Model6,
+  data = data,
+  family = gaussian,
+  prior = prior_def6,
+  sample_prior=T,
+  backend="cmdstanr",
+  threads = threading(2)
+)
+
+# Visualizing the priors
+prior6 <- prior_samples(model6)
+prior6 %>% glimpse()
+
+## Drawing out possible predictions from the priors
+prior6 %>% 
+  slice_sample(n = 50) %>% 
+  rownames_to_column("draw") %>% 
+  expand(nesting(draw, b),
+         a = c(-2, 2)) %>% 
+  mutate(d = b * a) %>% 
+
+## Plotting the lines based on the priors
+ggplot(aes(x = a, y = d)) +
+  geom_line(aes(group = draw),
+            color = "firebrick", alpha = .4) +
+  labs(x = "Diagnosis (std)",
+       y = "ALtercentric intrusion (std)") +
+  coord_cartesian(ylim = c(-2, 2)) +
+  theme_bw() +
+  theme(panel.grid = element_blank()) 
+
+# Posterior predictive check
+pp_check(model6, nsamples = 100)
+
+¨# Sampling from the posterior
+posterior6 <- posterior_samples(model6)
+
+pairs(model6)
+
+ggplot(posterior6) +
+  geom_density(aes(b_MR_scale), fill="blue", alpha=0.2)+
+  geom_density(aes(b_VH_scale), fill = "red", alpha = 0.2)+
+  geom_density(aes(prior_b), fill = "grey", alpha = 0.2)+
+  theme_minimal()+
+  ggtitle("ACI ~ 0 + Mindreading + VoiceHearing, All participants")
+
+print(model6)
+
+hypothesis(model6, c("MR_scale > 0","MR_scale < 0","MR_scale = 0", "VH_scale > 0" ,"VH_scale < 0","VH_scale = 0" ))
+```
 
 
