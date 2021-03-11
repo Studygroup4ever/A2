@@ -595,6 +595,50 @@ print(model4)
 
 ```
 
+Assessing evidence for the different hypothesis:
+
+```{r}
+# for model APA
+hypothesis(modelAPA, "APA > 0")
+hypothesis(modelAPA, "APA < 0")
+hypothesis(modelAPA, "APA = 0")
+
+# for model VH
+hypothesis(modelVH, "VH > 0")
+hypothesis(modelVH, "VH < 0")
+hypothesis(modelVH, "VH = 0")
+
+# for model MR
+hypothesis(modelMR, "MR > 0")
+hypothesis(modelMR, "MR < 0")
+hypothesis(modelMR, "MR = 0")
+
+# for model with MR and VH
+hypothesis(model_mTwo, "MR > 0")
+hypothesis(model_mTwo, "MR < 0")
+hypothesis(model_mTwo, "MR = 0")
+
+hypothesis(model_mTwo, "VH > 0")
+hypothesis(model_mTwo, "VH < 0")
+hypothesis(model_mTwo, "VH = 0")
+
+# for model with all symptoms 
+hypothesis(model4, "MR > 0")
+hypothesis(model4, "MR < 0")
+hypothesis(model4, "MR = 0")
+
+hypothesis(model4, "VH > 0")
+hypothesis(model4, "VH < 0")
+hypothesis(model4, "VH = 0")
+
+hypothesis(model4, "APA > 0")
+hypothesis(model4, "APA < 0")
+hypothesis(model4, "APA = 0")
+
+```
+
+
+
 (PART 2)
 #We investigate the effect of conditioning only on the schizophrenic population, and thereby introducing a collider bias. We do this using rethinking::quap() because this allows us to make a coefficient plot and easily compare the models and effects.
 ```{r}
@@ -746,5 +790,96 @@ plot(coeftab(m_APA_schz, m_MR_schz, m_VH_schz, m_VH_MR_schz, m_ALL_schz), par=c(
 #setMethod( "plot" , "coeftab" , function(x,y,...) coeftab_plot(x,y,...) )
 #getMethod("plot", "coeftab")
 ```
+
+
+```{r}
+# Drawing the DAGs
+dagS1 <- dagitty("dag {
+VH -> Diagnosis
+MR -> Diagnosis
+Apathy -> Diagnosis
+VH -> ACI
+MR -> ACI
+Apathy -> ACI
+}")
+
+coordinates(dagS1) <- list(
+  x = c(
+    Apathy = 0,
+    MR = 1,
+    VH = 2,
+    Diagnosis = 0.5,
+    ACI = 1.5
+  ),
+  y = c(
+    Apathy = 1,
+    MR = 1,
+    VH = 1,
+    Diagnosis = 2,
+    ACI = 2
+  )
+)
+
+drawdag(dagS1)
+
+dagS2 <- dagitty("dag {
+VH -> Diagnosis
+MR -> Diagnosis
+Apathy -> Diagnosis
+VH -> ACI
+MR -> ACI
+}")
+
+coordinates(dagS2) <- list(
+  x = c(
+    Apathy = 0,
+    MR = 1,
+    VH = 2,
+    Diagnosis = 0.5,
+    ACI = 1.5
+  ),
+  y = c(
+    Apathy = 1,
+    MR = 1,
+    VH = 1,
+    Diagnosis = 2,
+    ACI = 2
+  )
+)
+
+drawdag(dagS2) 
+
+dagS3 <- dagitty("dag {
+VH <- Diagnosis
+MR <- Diagnosis
+Apathy <- Diagnosis
+VH -> ACI
+MR -> ACI
+}")
+
+coordinates(dagS3) <- list(
+  x = c(
+    Apathy = 0,
+    MR = 1,
+    VH = 2,
+    Diagnosis = 0.5,
+    ACI = 1.5
+  ),
+  y = c(
+    Apathy = 1,
+    MR = 1,
+    VH = 1,
+    Diagnosis = 2,
+    ACI = 2
+  )
+)
+
+drawdag(dagS3)
+```
+
+
+
+
+
 
 
