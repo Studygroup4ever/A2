@@ -648,8 +648,8 @@ d2 <- d_sub #Only schizophrenic
 #Model with Mindreading
 m_MR_full <- quap(
   alist(
-    ACI_scale ~ dnorm(mu , sigma) ,
-    mu <- a[Diagnosis] + b_MR * MR_scale,
+    ACI ~ dnorm(mu , sigma) ,
+    mu <- a[Diagnosis] + b_MR * MR,
     a[Diagnosis] ~ dnorm(0 , 0.2) ,
     #prior
     b_MR ~ dnorm(0 , 0.5) ,
@@ -663,8 +663,8 @@ precis(m_MR_full , depth = 2)
 #Model with Apathy
 m_APA_full <- quap(
   alist(
-    ACI_scale ~ dnorm(mu , sigma) ,
-    mu <- a[Diagnosis] + b_Apath * Apath_scale,
+    ACI ~ dnorm(mu , sigma) ,
+    mu <- a[Diagnosis] + b_Apath * APA,
     a[Diagnosis] ~ dnorm(0 , 0.2) ,
     b_Apath ~ dnorm(0 , 0.5) ,
     sigma ~ dnorm(1, 0.5)) ,
@@ -676,8 +676,8 @@ precis(m_APA_full, depth = 2)
 #Model with voice hearing
 m_VH_full <- quap(
   alist(
-    ACI_scale ~ dnorm(mu , sigma) ,
-    mu <- a[Diagnosis] + b_VH * VH_scale,
+    ACI ~ dnorm(mu , sigma) ,
+    mu <- a[Diagnosis] + b_VH * VH,
     a[Diagnosis] ~ dnorm(0 , 0.2) ,
     b_VH ~ dnorm(0 , 0.5) ,
     sigma ~ dnorm(1, 0.5)) ,
@@ -690,7 +690,7 @@ precis(m_VH_full, depth = 2)
 m_VH_MR_full <- quap(
   alist(
     ACI_scale ~ dnorm(mu , sigma) ,
-    mu <- a[Diagnosis] + b_VH * VH_scale + b_MR * MR_scale,
+    mu <- a[Diagnosis] + b_VH * VH + b_MR * MR,
     a[Diagnosis] ~ dnorm(0 , 0.2) ,
     b_VH ~ dnorm(0 , 0.5) ,
     b_MR ~ dnorm(0, 0.5),
@@ -703,9 +703,9 @@ precis(m_VH_MR_full, depth = 2)
 #Model including all predictors
 m_ALL_full <- quap(
   alist(
-    ACI_scale ~ dnorm(mu , sigma) ,
+    ACI ~ dnorm(mu , sigma) ,
     mu <-
-      a[Diagnosis] + b_VH * VH_scale + b_MR * MR_scale + b_Apath * Apath_scale,
+      a[Diagnosis] + b_VH * VH + b_MR * MR + b_Apath * Apath,
     a[Diagnosis] ~ dnorm(0 , 0.2) ,
     b_VH ~ dnorm(0 , 0.5) ,
     b_MR ~ dnorm(0, 0.5),
@@ -721,7 +721,7 @@ precis(m_ALL_full, depth = 2)
 
 #Model with Mindreading
 m_MR_schz <- quap(alist(
-  ACI_scale ~ dnorm(mu , sigma) ,
+  ACI ~ dnorm(mu , sigma) ,
   mu <- b_MR * MR_scale,
   #a ~ dnorm( 0 , 0.2 ) , #No intercept when we only have one level of diagnosis
   b_MR ~ dnorm(0 , 0.5) ,
@@ -734,8 +734,8 @@ precis(m_MR_schz)
 #Model with apathy - not gonna do this with brms because..
 m_APA_schz <- quap(
   alist(
-    ACI_scale ~ dnorm(mu , sigma) ,
-    mu <- b_Apath * Apath_scale,
+    ACI ~ dnorm(mu , sigma) ,
+    mu <- b_Apath * APA,
     #a ~ dnorm( 0 , 0.2 ) ,
     b_Apath ~ dnorm(0 , 0.5) ,
     sigma ~ dnorm(1, 0.5)) ,
@@ -746,8 +746,8 @@ precis(m_APA_schz)
 
 #Model with voice hearing
 m_VH_schz <- quap(alist(
-  ACI_scale ~ dnorm(mu , sigma) ,
-  mu <- b_VH * VH_scale,
+  ACI ~ dnorm(mu , sigma) ,
+  mu <- b_VH * VH,
   #a ~ dnorm( 0 , 0.2 ) ,
   b_VH ~ dnorm(0 , 0.5) ,
   sigma ~ dnorm(1, 0.5)) ,
@@ -759,8 +759,8 @@ precis(m_VH_schz)
 #Model with voice hearing
 m_VH_MR_schz <- quap(
   alist(
-    ACI_scale ~ dnorm(mu , sigma) ,
-    mu <- b_VH * VH_scale + b_MR * MR_scale,
+    ACI ~ dnorm(mu , sigma) ,
+    mu <- b_VH * VH + b_MR * MR,
     #a ~ dnorm( 0 , 0.2 ) ,
     b_VH ~ dnorm(0 , 0.5) ,
     b_MR ~ dnorm(0, 0.5),
@@ -773,8 +773,8 @@ precis(m_VH_MR_schz)
 #Model with all predictors:
 m_ALL_schz <- quap(
   alist(
-    ACI_scale ~ dnorm(mu , sigma) ,
-    mu <- b_VH * VH_scale + b_MR * MR_scale + b_Apath * Apath_scale,
+    ACI ~ dnorm(mu , sigma) ,
+    mu <- b_VH * VH + b_MR * MR + b_Apath * APA,
     #a ~ dnorm( 0 , 0.2 ) , #
     b_VH ~ dnorm(0 , 0.5) ,
     b_MR ~ dnorm(0, 0.5),
