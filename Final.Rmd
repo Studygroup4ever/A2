@@ -649,8 +649,7 @@ d2 <- d_sub #Only schizophrenic
 m_MR_full <- quap(
   alist(
     ACI ~ dnorm(mu , sigma) ,
-    mu <- a[Diagnosis] + b_MR * MR,
-    a[Diagnosis] ~ dnorm(0 , 0.2) ,
+    mu <- b_MR * MR,
     #prior
     b_MR ~ dnorm(0 , 0.5) ,
     sigma ~ dnorm(1, 0.5)) ,
@@ -664,8 +663,7 @@ precis(m_MR_full , depth = 2)
 m_APA_full <- quap(
   alist(
     ACI ~ dnorm(mu , sigma) ,
-    mu <- a[Diagnosis] + b_Apath * APA,
-    a[Diagnosis] ~ dnorm(0 , 0.2) ,
+    mu <- b_Apath * APA,
     b_Apath ~ dnorm(0 , 0.5) ,
     sigma ~ dnorm(1, 0.5)) ,
   data = data_quap
@@ -677,8 +675,7 @@ precis(m_APA_full, depth = 2)
 m_VH_full <- quap(
   alist(
     ACI ~ dnorm(mu , sigma) ,
-    mu <- a[Diagnosis] + b_VH * VH,
-    a[Diagnosis] ~ dnorm(0 , 0.2) ,
+    mu <- b_VH * VH,
     b_VH ~ dnorm(0 , 0.5) ,
     sigma ~ dnorm(1, 0.5)) ,
   data = data_quap
@@ -690,8 +687,7 @@ precis(m_VH_full, depth = 2)
 m_VH_MR_full <- quap(
   alist(
     ACI ~ dnorm(mu , sigma) ,
-    mu <- a[Diagnosis] + b_VH * VH + b_MR * MR,
-    a[Diagnosis] ~ dnorm(0 , 0.2) ,
+    mu <- b_VH * VH + b_MR * MR,
     b_VH ~ dnorm(0 , 0.5) ,
     b_MR ~ dnorm(0, 0.5),
     sigma ~ dnorm(1, 0.5)) ,
@@ -704,8 +700,7 @@ precis(m_VH_MR_full, depth = 2)
 m_ALL_full <- quap(
   alist(
     ACI ~ dnorm(mu , sigma) ,
-    mu <- a[Diagnosis] + b_VH * VH + b_MR * MR + b_Apath * APA,
-    a[Diagnosis] ~ dnorm(0 , 0.2) ,
+    mu <- b_VH * VH + b_MR * MR + b_Apath * APA,
     b_VH ~ dnorm(0 , 0.5) ,
     b_MR ~ dnorm(0, 0.5),
     b_Apath ~ dnorm(0, 0.5),
