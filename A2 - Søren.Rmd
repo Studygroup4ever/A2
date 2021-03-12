@@ -695,6 +695,7 @@ Q3.2) OPTIONAL: is this a general pattern? Try varying the parameters (e.g. corr
 pacman::p_load(MASS, tidyverse, psych)
 
 seed <- 1981 # Defining a seed so the results are always the same 
+# HINT:
 # set.seed(1981)
 n <- 300 # Defining the amount of participants
 
@@ -710,17 +711,17 @@ Sigma <- matrix(data=c(1,SymptomCorr,SymptomCorr,EffectCorrRel,
                        nrow=4,ncol=4)
 
 ## Generate data from a multivariate (mvr) normal (n) distribution
-d <- mvrnorm(n = n, # number of participant
+d1 <- mvrnorm(n = n, # number of participant
         mu = c(1.2, 1.2, 1.2, 4), # mean of each variable
         Sigma) # variance co-variance matrix
 
 # Giving meaningful names to variables and add ID
-d <- data.frame(
-  VoiceHearing = d[,1], 
-  MindReading =  d[,2],
-  Apathy =  d[,3], 
-  AltercentricIntrusion = d[,4],
-  ID = seq(nrow(d)))
+d1 <- data.frame(
+  VoiceHearing = d1[,1], 
+  MindReading =  d1[,2],
+  Apathy =  d1[,3], 
+  AltercentricIntrusion = d1[,4],
+  ID = seq(nrow(d1)))
 
 # Assessing whether the participant has schizophrenia (high enough sum of symptoms)
 # Here we choose participants scoring above 75% percentile (the most severe ones)
