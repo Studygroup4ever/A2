@@ -641,7 +641,8 @@ hypothesis(model4, c("MR > 0",
 ```{r}
 #We only want to look at the patients (Diagnosis = 2)
 data_quap <- d #Copying the data for cooperation purposes
-d2 <- d_sub #Only schizophrenic
+d2 <- filter(data_quap, Diagnosis == 2) #Only schizophrenic
+
 
 #Remaking the models with quap - including both neurotypicals and schrizophrenic population:
 
@@ -788,6 +789,8 @@ plot(coeftab(m_APA_schz, m_MR_schz, m_VH_schz, m_VH_MR_schz, m_ALL_schz), par=c(
 #Potential plotting issues can be fixed by:
 #setMethod( "plot" , "coeftab" , function(x,y,...) coeftab_plot(x,y,...) )
 #getMethod("plot", "coeftab")
+
+
 ```
 
 

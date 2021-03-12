@@ -42,6 +42,7 @@ pacman::p_load(tidyverse, rethinking, brms, patchwork, dagitty)
 d <- read_csv("Ass2.csv") %>% 
   na.omit()
 
+mean(d$VoiceHearing);mean(d$MindReading)
 #scale variables
 d <- d %>% 
   mutate(VH_scale = scale(VoiceHearing),
