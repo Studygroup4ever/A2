@@ -1,0 +1,993 @@
+---
+title: "Final"
+author: "Study group 4evar"
+date: "3/10/2021"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+
+## Assignment 2 - Exploring causal inference issues
+
+In this assignment we explore some issues related to multiple regressions (regressions with more than one predictor), and inferred (causal) relations between variables. N.B. the data is simulated (to make sure I know the actual mechanism generating it), but it's based on a real study. So bear with a longish introduction to get into the details of what we are doing and why it is important.
+
+### Altercentric intrusion in schizophrenia
+
+People with schizophrenia often report altered control and distinction of self-other representations: intrusive thoughts, hearing of voices, delusions of mind reading, paranoia, etc (a substantial portion of the psychotic symptoms experienced in schizophrenia). These have been variously attributed to hypermentalizing (over attribution of mental states to others), social impairment (over preoccupation with own thought processes), hyper socialization (inability to inhibit information from others), etc.
+
+The current study investigates 1) whether schizophrenia is indeed related to altered control and distinction of self-other representations, in particular altercentric intrusions (inability to inhibit social information), and 2) whether these are related to the relevant psychotic symptoms. N.B. the actual study also investigates egocentric intrusion, do check the papers below if interested.
+
+The task is a slightly modified version of this: https://www.ncbi.nlm.nih.gov/pubmed/20731512 (also what Nicole and Louise described in their guest talk) You look at a picture with some dots visible to you, as well as with a different person with a different set of dots visible to them. The number of dots you see and that the other sees can be the same (congruent condition) or not (incongruent condition). You are tasked to indicate whether a given number (e.g. 3) matches the number of dots you see (and the dots visible to the other person are irrelevant to the task).
+
+
+The tasks investigates altercentric intrusion: will your reaction time change according to whether the other person is seeing the same amount of dots as you, or not? The idea is that if you correctly inhibit social information, your reaction time should not change, as the information about the other person is not relevant. On the contrary, if you nevertheless use task irrelevant social information, you'll be slower at indicating whether 3 is the right number of dots when the other person sees a different amount of dots than you (conflicting information).
+The bigger the difference between RTs in the congruent and incongruent condition the bigger the altercentric intrusion effect.
+
+For each participant you have 6 variables: 1) ID, 2) AltercentricIntrusion (continuous score), 3) Diagnosis (schizophrenia vs. control), 4) VoiceHearing (severity of voice hearing symptoms, continuous score of the severity of the symptom as measured by a clinician), 5) MindReading (severity of delusions of mind reading, continuous score of the severity of the symptom as measured by a clinician); 6) Apathy (severity of lack of motivation in taking care of oneself, from washing to showing up at work, continuous score of the severity of the symptom as measured by a clinician). 
+N.B. Real clinical scores of symptoms would be on a likert scale, and altercentric intrusions would be on a slightly complex continuous scale. But life is too short for that shit, and we want to focus on multivariate models and causal inference, so all those variables in the assignment (but ID and Diagnosis) have been simulated as Gaussian distributions.
+
+The research questions you have to answer are the following:
+
+## First part
+
+Q1.1) Does schizophrenia involve altercentric intrusion? 
+
+a) Define model and priors. 
+b) Test the implications of your priors (prior predictive checks) and if needed adjust them. 
+c) Run the model. 
+d) Test the quality of the fitted model (posterior predictive checks, prior-posterior updates). 
+e) Assess the evidence in favor of an increased altercentric intrusion in schizophrenia. 
+f) Report the model and the results, including plots.
+
+```{r}
+library(pacman)
+
+p_load(dagitty, 
+       tidyverse, 
+       rethinking, 
+       brms, 
+       patchwork, 
+       tidybayes)
+
+```
+
+
+```{r}
+# Scaling and scaling
+d <- read_csv("Ass2.csv") %>% mutate(
+  ACI = scale(AltercentricIntrusion),
+  MR = scale(MindReading),
+  APA = scale(Apathy),
+  VH = scale(VoiceHearing),
+  Diagnosis = as.factor(Diagnosis + 1),
+  Diagnosis_name = ifelse(d$Diagnosis == 1, "Control", "Schizophrenic"))
+```
+
+```{r}
+# Density plot
+dens(d$ACI) 
+
+# Boxplot
+ggplot(d, aes(x = Diagnosis, y = ACI))+
+  geom_boxplot(aes(group = Diagnosis, fill = Diagnosis), alpha = .5)+
+  theme_minimal()
+
+d %>% group_by(Diagnosis_name) %>% 
+  ggplot(aes(ACI, fill = Diagnosis_name, color = Diagnosis_name)) +
+  geom_density(alpha = 0.3) +
+  geom_vline(xintercept = -0.09912351	, size = 0.5, color = "red") + #control mean
+  geom_vline(xintercept = 0.29737054	, size = 0.5, color = '#00BFC4') + #schizo mean
+  ggtitle("Density of Altercentric intrusion scores per Diagnosis (std) w. color-coded
+  mean lines") +
+  theme_minimal() +
+  xlab("Altercentric Intrusion (std)") +
+  ylab("Density") + expand_limits(x = c(-3.5, 3.5)) + 
+  labs(fill = "Diagnosis", colour = "Diagnosis")
+
+```
+
+```{r}
+# brms model with index variable
+
+# Building models
+ACI_f0 <- bf(ACI ~ 0 + Diagnosis) # Is this how you would use index variables in brm? How do you interprete the outcome?
+
+# Help getting priors
+get_prior(ACI_f0,
+          d,
+          family = gaussian)
+
+# Defining the priors
+ACI_p0 <- c(
+  prior(normal(0, 1), class = b, coef = Diagnosis1),
+  prior(normal(0, 1), class = b, coef = Diagnosis2),
+  prior(normal(1, 0.5), class = sigma)
+)
+
+# Building prior model
+ACI_m0_prior <- brm(
+  formula = ACI_f0,
+  data = d,
+  family = gaussian,
+  prior = ACI_p0,
+  #file = "ACI_m0_prior",
+  sample_prior = "only",
+  backend = "cmdstanr"
+  #threads = threading(2)
+)
+
+# PP Check
+(
+  p1_m0 <- pp_check(ACI_m0_prior, nsamples = 100) +
+    xlab("Altercentric Intrusion (std)") +
+    ylab("Density") +
+    ggtitle("Prior predictive check for model m0")
+)
+
+# Building model
+ACI_m0 <- brm(
+  formula = ACI_f0,
+  data = d,
+  family = gaussian,
+  prior = ACI_p0,
+  #file = "ACI_m0_prior",
+  sample_prior = T,
+  backend = "cmdstanr"
+  #threads = threading(2)
+)
+
+# Visualizing the priors
+prior_samples(ACI_m0) %>% 
+
+## Drawing out possible predictions from the priors
+  mutate(b = b_Diagnosis2 - b_Diagnosis1) %>% 
+  slice_sample(n = 50) %>%
+  rownames_to_column("draw") %>%
+  expand(nesting(draw, b),
+         a = c(-2, 2)) %>%
+  mutate(d = b * a) %>% 
+
+## Plotting the lines based on the priors
+  ggplot(aes(x = a, y = d)) +
+  geom_line(aes(group = draw),
+            color = "firebrick", alpha = .4) +
+  labs(x = "Change in Experimental Group",
+       y = "Altercentric Intrusion (std)") +
+  coord_cartesian(ylim = c(-2, 2)) +
+  theme_bw() +
+  theme(panel.grid = element_blank()) +
+  ggtitle("Possible slopes based on priors beta = normal(0, 1) & sigma = normal(1, 0.5)") 
+
+
+```
+
+
+```{r}
+# Work on m1
+ACI_p1 <- c(
+  prior(normal(0, 0.5), class = b, coef = Diagnosis1),
+  prior(normal(0, 0.5), class = b, coef = Diagnosis2),
+  prior(normal(1, 0.5), class = sigma))
+
+# Building prior model
+ACI_m1_prior <- brm(
+  formula = ACI_f0,
+  data = d,
+  family = gaussian,
+  prior = ACI_p1,
+  #file = "ACI_m1_prior",
+  sample_prior = "only",
+  backend = "cmdstanr"
+  #threads = threading(2)
+)
+
+# PP Check
+(
+  p1_m1 <- pp_check(ACI_m1_prior, nsamples = 100) +
+    xlab("Altercentric Intrusion (std)") +
+    ylab("Density") +
+    ggtitle("Prior predictive check for model m1")
+)
+
+p1_m0 + p1_m1
+
+# Building model
+(
+  ACI_m1 <- brm(
+    formula = ACI_f0,
+    data = d,
+    family = gaussian,
+    prior = ACI_p1,
+    #file = "ACI_m1",
+    sample_prior = T,
+    backend = "cmdstanr"
+    #threads = threading(2)
+  )
+)
+
+# Visualizing the priors
+prior_samples(ACI_m1) %>% 
+
+## Drawing out possible predictions from the priors
+  mutate(b = b_Diagnosis2 - b_Diagnosis1) %>% 
+  slice_sample(n = 50) %>%
+  rownames_to_column("draw") %>%
+  expand(nesting(draw, b),
+         a = c(-2, 2)) %>%
+  mutate(d = b * a) %>% 
+
+## Plotting the lines based on the priors
+  ggplot(aes(x = a, y = d)) +
+  geom_line(aes(group = draw),
+            color = "firebrick", alpha = .4) +
+  labs(x = "Change in Experimental Group",
+       y = "Altercentric Intrusion (std)") +
+  coord_cartesian(ylim = c(-2, 2)) +
+  theme_bw() +
+  theme(panel.grid = element_blank()) +
+  ggtitle("Possible slopes based on priors beta = normal(0, 0.5) & sigma = normal(1, 0.5)")
+
+# Posterior predictive check
+p2_m1 <- pp_check(ACI_m1, nsamples = 100) +
+  xlab("Altercentric Intrusion (std)") +
+  ylab("Density") +
+  ggtitle("Posterior predictive check for model m1")
+
+p1_m1 + p2_m1
+
+
+# Sampling from the posterior
+posterior_m1 <- posterior_samples(ACI_m1)  %>% 
+  mutate(diff = b_Diagnosis2 - b_Diagnosis1)
+
+# Creating a long format of the posterior to plot the different distributions together
+posterior_m1 %>% 
+  pivot_longer(c(b_Diagnosis1, b_Diagnosis2, prior_b_Diagnosis1), names_to = "Distributions") %>% 
+  ggplot(aes(fill = Distributions)) +
+
+# Plotting the prior and posterior distributions
+  geom_density(aes(value), alpha=0.3) + 
+  theme_minimal()+
+  ggtitle("Posterior beta distributions for both groups plotted against the prior") + 
+  scale_fill_discrete(name = "Distributions", labels = c("Control", "Schizophrenic", "Prior")) +
+  xlab("Altercentric Intrusion (std)")
+
+## Plotting the difference
+posterior_m1 %>% ggplot() +
+  geom_density(aes(diff), fill = "blue", alpha=0.3) + 
+  theme_minimal() + 
+  ggtitle("Distribution of difference in beta for control and schizophrenic patients")
+
+# slicing the posterior
+posterior_slice <- posterior_m1 %>% 
+  slice(1:100)
+
+# plotting model implications
+d %>% 
+  ggplot(aes(x = Diagnosis, y = ACI)) +
+  geom_abline(intercept = posterior_slice[ ,1] - (posterior_slice[ ,2] - posterior_slice[ ,1]), 
+              slope     = posterior_slice[ ,2] - posterior_slice[ ,1], alpha = 0.1) +
+  geom_point(shape = 1, size = 2, color = "royalblue") +
+  theme_minimal() +
+  ggtitle("Model predictions plotted against scaled data, N = 100") +
+  scale_x_discrete(labels=c("1" = "Control", "2" = "Schizophrenia")) + 
+  ylab("Altercentric Intrusion (std)")
+
+# testing the hypotheses
+hypothesis(ACI_m1, "Diagnosis1 = Diagnosis2")
+hypothesis(ACI_m1, "Diagnosis1 > Diagnosis2")
+hypothesis(ACI_m1, "Diagnosis1 < Diagnosis2")
+
+```
+
+Q1.2) Is altercentric intrusion related to specific symptoms *in the patients*? Identify which of the symptoms could be relevant (given their description above). Should you include more than one symptom? Build models, priors, predictive checks. Assess the evidence and report models and results, including plots. Discuss whether the results make sense.
+
+```{r}
+# Defining functions for pairs-plot
+reg <- function(x, y, col) abline(lm(y ~ x), col = col)
+
+panel.lm <-
+  function (x, y, col = par("col"), bg = NA, pch = par("pch"), 
+            cex = 1, col.smooth = "red", span = 2 / 3, iter = 3, ...)  {
+    points(x, y, pch = pch, col = col, bg = bg, cex = cex)
+    ok <- is.finite(x) & is.finite(y)
+    if (any(ok)) 
+      reg(x[ok], y[ok], col.smooth)
+  }
+
+panel.cor <- function(x, y, digits = 2, prefix = "", cex.cor, ...) {
+  usr <- par("usr")
+  on.exit(par(usr))
+  par(usr = c(0, 1, 0, 1))
+  r <- cor(x, y)
+  txt <- format(c(r, 0.123456789), digits = digits)[1]
+  txt <- paste0(prefix, txt)
+  text(0.5, 0.5, txt, cex = 1.1, font = 4)
+}
+```
+
+```{r}
+# subsetting only the schizophrenic group
+d_sub <- d %>% filter(Diagnosis == 2)
+
+# Pairs-plot for everybody
+pairs( ~ ACI + MR + APA + VH + Diagnosis, data = d,
+  panel = panel.lm,
+  cex = 1.5,
+  pch = 19,
+  col = adjustcolor(4, .4),
+  cex.labels = 2,
+  font.labels = 2,
+  lower.panel = panel.cor
+)
+
+# pairs-plot for only the schizophrenic group
+pairs( ~ ACI + MR + APA + VH, data = d_sub,
+  panel = panel.lm,
+  cex = 1.5,
+  pch = 19,
+  col = adjustcolor(4, .4),
+  cex.labels = 2,
+  font.labels = 2,
+  lower.panel = panel.cor
+)
+
+cor.test(d_sub$MindReading, d_sub$VoiceHearing)
+
+```
+
+## Creating model with each predictor to see how much they explain
+
+### Apathy
+
+```{r}
+
+# Apathy
+ModelAPA <- bf(ACI ~ 1 + APA)
+
+prior_defAPA <- c(
+  prior(normal(0, 0.5), class = Intercept), # prior set to the overall mean of the data, aka. the same data prior for the 0 + Diagnosis model made earlier,
+  prior(normal(0,0.5), class = b),
+  prior(normal(1,0.5), class = sigma))
+
+# Specifiying a model for assessing the priors
+model_priorAPA <- brm(
+  formula = ModelAPA,
+  data = d_sub,
+  family = gaussian,
+  prior = prior_defAPA,
+  sample_prior="only",
+  file = "model_prior",
+  backend="cmdstanr",
+  threads = threading(2)
+)
+
+# Checking priors using ppcheck (prior predictive check)
+pp_check(model_priorAPA, nsamples = 100)
+
+# Creating the model
+modelAPA <- brm(
+  formula = ModelAPA,
+  data = d_sub,
+  family = gaussian,
+  prior = prior_defAPA,
+  sample_prior=T,
+  backend="cmdstanr",
+  threads = threading(2)
+)
+
+# Posterior predictive check
+pp_check(modelAPA, nsamples = 100)
+
+print(modelAPA)
+
+```
+
+### Voicehearing
+```{r}
+
+# Voicehearing
+ModelVH <- bf(ACI ~ 1 + VH)
+
+prior_defVH <- c(
+  prior(normal(0, 0.5), class = Intercept),
+  prior(normal(0,0.5), class = b),
+  prior(normal(1,0.5), class = sigma))
+
+# Specifiying a model for assessing the priors
+model_priorVH <- brm(
+  formula = ModelVH,
+  data = d_sub,
+  family = gaussian,
+  prior = prior_defVH,
+  sample_prior="only",
+  file = "model_prior",
+  backend="cmdstanr",
+  threads = threading(2)
+)
+
+# Checking priors using ppcheck (prior predictive check)
+pp_check(model_priorVH, nsamples = 100)
+
+# Creating the model
+modelVH <- brm(
+  formula = ModelVH,
+  data = d_sub,
+  family = gaussian,
+  prior = prior_defVH,
+  sample_prior=T,
+  backend="cmdstanr",
+  threads = threading(2)
+)
+
+
+# Posterior predictive check
+pp_check(modelVH, nsamples = 100)
+
+print(modelVH)
+
+```
+### Mindreading
+```{r}
+
+# Mindreading
+
+ModelMR <- bf(ACI ~ 1 + MR)
+
+prior_defMR <- c(
+  prior(normal(0, 0.5), class = Intercept),
+  prior(normal(1,0.5), class = sigma),
+  prior(normal(0,0.5), class = b))
+
+# Specifiying a model for assessing the priors
+model_priorMR <- brm(
+  formula = ModelMR,
+  data = d_sub,
+  family = gaussian,
+  prior = prior_defMR,
+  sample_prior="only",
+  file = "model_prior",
+  backend="cmdstanr",
+  threads = threading(2)
+)
+
+# Checking priors using ppcheck (prior predictive check)
+pp_check(model_priorMR, nsamples = 100)
+
+# Creating the model
+modelMR <- brm(
+  formula = ModelMR,
+  data = d_sub,
+  family = gaussian,
+  prior = prior_defMR,
+  sample_prior=T,
+  backend="cmdstanr",
+  threads = threading(2)
+)
+
+# Posterior predictive check
+pp_check(modelMR, nsamples = 100)
+
+print(modelMR)
+
+```
+
+Two predictors included
+```{r}
+# Specifying model
+ModelTwo <- bf(ACI ~ 1 + MR + VH)
+
+# Using get prior
+get_prior(ModelTwo,  d_sub, family = gaussian)
+
+# Defining priors
+prior_mTwo <- c(
+  prior(normal(0, 0.5), class = Intercept),
+  prior(normal(1,0.5), class = sigma),
+  prior(normal(0,0.5), class = b)
+)
+
+# Specifiying a model for assessing the priors
+model_mTwo_prior <- brm(
+  formula = ModelTwo,
+  data = d_sub,
+  family = gaussian,
+  prior = prior_mTwo,
+  sample_prior="only",
+  #file = "model_prior",
+  backend="cmdstanr",
+  threads = threading(2)
+)
+
+# Checking priors using ppcheck (prior predictive check)
+pp_check(model_mTwo_prior, nsamples = 100)
+
+# Creating the model
+model_mTwo <- brm(
+  formula = ModelTwo,
+  data = d_sub,
+  family = gaussian,
+  prior = prior_mTwo,
+  sample_prior = T,
+  backend = "cmdstanr",
+  threads = threading(2)
+)
+
+# Posterior predictive check
+pp_check(model_mTwo, nsamples = 100)
+
+# Sampling from the posterior
+posterior_samples(model_mTwo) %>% 
+
+# Creating a long format of the posterior to plot the different distributions together
+  pivot_longer(c(b_MR, b_VH, prior_b), names_to = "Estimates") %>%
+
+# Plotting the prior and posterior distributions
+  ggplot(aes(fill = Estimates)) +
+  geom_density(aes(value), alpha = 0.3) +
+  theme_minimal() +
+  scale_fill_discrete(name = "Estimates", labels = c("MR", "VH", "Prior")) +
+  xlab("Altercentric Intrusion (std)")+ggtitle("Posterior Predictive Distributions, ACI ~ 1 + VoiceHearing + Mindreading")
+
+pairs(model_mTwo)
+
+print(model_mTwo)
+
+```
+
+All predictors included
+```{r}
+# Specifying model
+Model4 <- bf(ACI ~ 1 + MR + VH + APA)
+
+# Using get prior
+get_prior(Model4,  d_sub, family = gaussian)
+
+# Defining priors
+prior_def4 <- c(
+  prior(normal(0, 0.5), class = Intercept),
+  prior(normal(1,0.5), class = sigma),
+  prior(normal(0,0.5), class = b)
+)
+
+# Specifiying a model for assessing the priors
+model_prior4 <- brm(
+  formula = Model4,
+  data = d_sub,
+  family = gaussian,
+  prior = prior_def4,
+  sample_prior="only",
+  file = "model_prior",
+  backend="cmdstanr",
+  threads = threading(2)
+)
+
+# Checking priors using ppcheck (prior predictive check)
+pp_check(model_prior4, nsamples = 100)
+
+
+# Creating the model
+model4 <- brm(
+  formula = Model4,
+  data = d_sub,
+  family = gaussian,
+  prior = prior_def4,
+  sample_prior=T,
+  backend="cmdstanr",
+  threads = threading(2)
+)
+
+# Posterior predictive check
+pp_check(model4, nsamples = 100)
+
+# Sampling from the posterior
+posterior_samples(model4) %>% 
+
+# Creating a long format of the posterior to plot the different distributions together
+  pivot_longer(c(b_MR, b_VH, b_APA, prior_b), names_to = "Estimates") %>%
+  
+# Plotting the prior and posterior distributions
+  ggplot(aes(fill = Estimates)) +
+  geom_density(aes(value), alpha = 0.3) +
+  theme_minimal() +
+  scale_fill_discrete(name = "Estimates", labels = c("APA", "MR", "VH", "Prior")) +
+  xlab("Altercentric Intrusion (std)")+ggtitle("Posterior Predictive Distributions, ACI ~ 1 + Mindreading + VoiceHearing + Apathy")
+
+pairs(model4)
+
+print(model4)
+
+```
+
+Assessing evidence for the different hypothesis:
+
+```{r}
+# for model APA
+hypothesis(modelAPA, c("APA > 0", 
+                       "APA < 0", 
+                       "APA = 0"))
+
+# for model VH
+hypothesis(modelVH, c("VH > 0", 
+                      "VH < 0", 
+                      "VH = 0"))
+
+# for model MR
+hypothesis(modelMR, c("MR > 0", 
+                      "MR < 0", 
+                      "MR = 0"))
+
+# for model with MR and VH
+hypothesis(model_mTwo, c("MR > 0", 
+                         "MR < 0", 
+                         "MR = 0",
+                         "VH > 0",
+                         "VH < 0",
+                         "VH = 0"))
+
+# for model with all symptoms 
+hypothesis(model4, c("MR > 0",
+                     "MR < 0",
+                     "MR = 0",
+                     "VH > 0",
+                     "VH < 0",
+                     "VH = 0",
+                     "APA > 0",
+                     "APA < 0",
+                     "APA = 0"))
+
+```
+
+
+
+(PART 2)
+#We investigate the effect of conditioning only on the schizophrenic population, and thereby introducing a collider bias. We do this using rethinking::quap() because this allows us to make a coefficient plot and easily compare the models and effects.
+```{r}
+#We only want to look at the patients (Diagnosis = 2)
+data_quap <- d #Copying the data for cooperation purposes
+d2 <- filter(data_quap, Diagnosis == 2) #Only schizophrenic
+
+
+#Remaking the models with quap - including both neurotypicals and schrizophrenic population:
+
+#Model with Mindreading
+m_MR_full <- quap(
+  alist(
+    ACI ~ dnorm(mu , sigma) ,
+    mu <- a + b_MR * MR,
+    a ~ dnorm( 0 , 0.2 ),
+    b_MR ~ dnorm(0 , 0.5) ,
+    sigma ~ dnorm(1, 0.5)) ,
+  data = data_quap
+)
+
+precis(m_MR_full , depth = 2)
+
+
+#Model with Apathy
+m_APA_full <- quap(
+  alist(
+    ACI ~ dnorm(mu , sigma) ,
+    mu <- a + b_Apath * APA,
+    a ~ dnorm( 0 , 0.2 ),
+    b_Apath ~ dnorm(0 , 0.5) ,
+    sigma ~ dnorm(1, 0.5)) ,
+  data = data_quap
+)
+
+precis(m_APA_full, depth = 2) 
+
+#Model with voice hearing
+m_VH_full <- quap(
+  alist(
+    ACI ~ dnorm(mu , sigma) ,
+    mu <- a + b_VH * VH,
+    a ~ dnorm( 0 , 0.2 ),
+    b_VH ~ dnorm(0 , 0.5) ,
+    sigma ~ dnorm(1, 0.5)) ,
+  data = data_quap
+)
+
+precis(m_VH_full, depth = 2)
+
+#Model with voice hearing + Mindreading
+m_VH_MR_full <- quap(
+  alist(
+    ACI ~ dnorm(mu , sigma) ,
+    mu <- a + b_VH * VH + b_MR * MR,
+   a ~ dnorm( 0 , 0.2 ),
+   b_VH ~ dnorm(0 , 0.5) ,
+    b_MR ~ dnorm(0, 0.5),
+    sigma ~ dnorm(1, 0.5)) ,
+  data = data_quap
+)
+
+precis(m_VH_MR_full, depth = 2)
+
+#Model including all predictors
+m_ALL_full <- quap(
+  alist(
+    ACI ~ dnorm(mu , sigma) ,
+    mu <- a + b_VH * VH + b_MR * MR + b_Apath * APA,
+    a ~ dnorm( 0 , 0.2 ),
+    b_VH ~ dnorm(0 , 0.5) ,
+    b_MR ~ dnorm(0, 0.5),
+    b_Apath ~ dnorm(0, 0.5),
+    sigma ~ dnorm(1, 0.5)) ,
+  data = data_quap
+)
+
+precis(m_ALL_full, depth = 2)
+
+#Here we make the models only with the schizophrenic population:
+
+#Model with Mindreading
+m_MR_schz <- quap(alist(
+  ACI ~ dnorm(mu , sigma) ,
+  mu <- b_MR * MR,
+  a ~ dnorm( 0 , 0.2 ) , #Intercept
+  b_MR ~ dnorm(0 , 0.5) ,
+  sigma ~ dnorm(1, 0.5)) ,
+data = d2)
+
+precis(m_MR_schz)
+
+
+#Model with apathy - not gonna do this with brms because..
+m_APA_schz <- quap(
+  alist(
+    ACI ~ dnorm(mu , sigma) ,
+    mu <- a + b_Apath * APA,
+    a ~ dnorm( 0 , 0.2 ) ,
+    b_Apath ~ dnorm(0 , 0.5) ,
+    sigma ~ dnorm(1, 0.5)) ,
+  data = d2
+)
+
+precis(m_APA_schz)
+
+#Model with voice hearing
+m_VH_schz <- quap(alist(
+  ACI ~ dnorm(mu , sigma) ,
+  mu <- a + b_VH * VH,
+  a ~ dnorm( 0 , 0.2 ) ,
+  b_VH ~ dnorm(0 , 0.5) ,
+  sigma ~ dnorm(1, 0.5)) ,
+data = d2)
+
+precis(m_VH_schz)
+
+
+#Model with voice hearing
+m_VH_MR_schz <- quap(
+  alist(
+    ACI ~ dnorm(mu , sigma) ,
+    mu <- b_VH * VH + b_MR * MR,
+    a ~ dnorm( 0 , 0.2 ) ,
+    b_VH ~ dnorm(0 , 0.5) ,
+    b_MR ~ dnorm(0, 0.5),
+    sigma ~ dnorm(1, 0.5)) ,
+  data = d2
+)
+
+precis(m_VH_MR_schz)
+
+#Model with all predictors:
+m_ALL_schz <- quap(
+  alist(
+    ACI ~ dnorm(mu , sigma) ,
+    mu <- a + b_VH * VH + b_MR * MR + b_Apath * APA,
+    a ~ dnorm( 0 , 0.2 ) , #
+    b_VH ~ dnorm(0 , 0.5) ,
+    b_MR ~ dnorm(0, 0.5),
+    b_Apath ~ dnorm(0, 0.5),
+    sigma ~ dnorm(1, 0.5)) ,
+  data = d2
+)
+
+precis(m_ALL_schz)
+
+setMethod( "plot" , "coeftab" , function(x,y,...) coeftab_plot(x,y,...) )
+getMethod("plot", "coeftab")
+
+#Plotting model coefficients:
+plot(coeftab(m_APA_full, m_MR_full, m_VH_full, m_VH_MR_full, m_ALL_full), par=c("b_VH","b_MR", "b_Apath"))
+
+#And for the schizophrenic population
+plot(coeftab(m_APA_schz, m_MR_schz, m_VH_schz, m_VH_MR_schz, m_ALL_schz), par=c("b_VH","b_MR", "b_Apath"))
+
+#Potential plotting issues can be fixed by:
+# setMethod( "plot" , "coeftab" , function(x,y,...) coeftab_plot(x,y,...) )
+# getMethod("plot", "coeftab")
+
+```
+
+
+```{r}
+# Drawing the DAGs
+dagS1 <- dagitty("dag {
+VH -> Diagnosis
+MR -> Diagnosis
+Apathy -> Diagnosis
+VH -> ACI
+MR -> ACI
+Apathy -> ACI
+}")
+
+coordinates(dagS1) <- list(
+  x = c(
+    Apathy = 0,
+    MR = 1,
+    VH = 2,
+    Diagnosis = 0.5,
+    ACI = 1.5
+  ),
+  y = c(
+    Apathy = 1,
+    MR = 1,
+    VH = 1,
+    Diagnosis = 2,
+    ACI = 2
+  )
+)
+
+drawdag(dagS1)
+
+dagS2 <- dagitty("dag {
+VH -> Diagnosis
+MR -> Diagnosis
+Apathy -> Diagnosis
+VH -> ACI
+MR -> ACI
+}")
+
+coordinates(dagS2) <- list(
+  x = c(
+    Apathy = 0,
+    MR = 1,
+    VH = 2,
+    Diagnosis = 0.5,
+    ACI = 1.5
+  ),
+  y = c(
+    Apathy = 1,
+    MR = 1,
+    VH = 1,
+    Diagnosis = 2,
+    ACI = 2
+  )
+)
+
+drawdag(dagS2) 
+
+dagS3 <- dagitty("dag {
+VH <- Diagnosis
+MR <- Diagnosis
+Apathy <- Diagnosis
+VH -> ACI
+MR -> ACI
+}")
+
+coordinates(dagS3) <- list(
+  x = c(
+    Apathy = 0,
+    MR = 1,
+    VH = 2,
+    Diagnosis = 0.5,
+    ACI = 1.5
+  ),
+  y = c(
+    Apathy = 1,
+    MR = 1,
+    VH = 1,
+    Diagnosis = 2,
+    ACI = 2
+  )
+)
+
+drawdag(dagS3)
+```
+
+```{r}
+# Specifying model
+Model6 <- bf(ACI ~ 1 + VH + MR)
+
+# Using get prior
+get_prior(Model6,  d, family = gaussian)
+
+# Defining priors
+prior_def6 <- c(
+  prior(normal(0,0.5), class = Intercept),
+  prior(normal(1,0.5), class = sigma),
+  prior(normal(0,0.5), class = b)
+)
+
+# Specifiying a model for assessing the priors
+model_prior6 <- brm(
+  formula = Model6,
+  data = d,
+  family = gaussian,
+  prior = prior_def6,
+  sample_prior="only",
+  #file = "model_prior",
+  backend="cmdstanr",
+  threads = threading(2)
+)
+
+# Checking priors using ppcheck (prior predictive check)
+pp_check(model_prior6, nsamples = 100)
+
+
+# Creating the model
+model6 <- brm(
+  formula = Model6,
+  data = d,
+  family = gaussian,
+  prior = prior_def6,
+  sample_prior=T,
+  backend="cmdstanr",
+  threads = threading(2)
+)
+
+# Visualizing the priors
+prior6 <- prior_samples(model6)
+prior6 %>% glimpse()
+
+## Drawing out possible predictions from the priors
+prior6 %>% 
+  slice_sample(n = 50) %>% 
+  rownames_to_column("draw") %>% 
+  expand(nesting(draw, b),
+         a = c(-2, 2)) %>% 
+  mutate(d = b * a) %>% 
+
+## Plotting the lines based on the priors
+ggplot(aes(x = a, y = d)) +
+  geom_line(aes(group = draw),
+            color = "firebrick", alpha = .4) +
+  labs(x = "Change in Experimental Group",
+       y = "Altercentric Intrusion (std)") +
+  coord_cartesian(ylim = c(-2, 2)) +
+  theme_bw() +
+  theme(panel.grid = element_blank()) 
+
+# Posterior predictive check
+pp_check(model6, nsamples = 100)
+
+pairs(model6)
+
+# Sampling from the posterior
+posterior6 <- posterior_samples(model6)
+
+posterior_samples(model6) %>% 
+
+# Creating a long format of the posterior to plot the different distributions together
+  pivot_longer(c(b_MR, b_VH, prior_b), names_to = "Estimates") %>%
+  
+# Plotting the prior and posterior distributions
+  ggplot(aes(fill = Estimates)) +
+  geom_density(aes(value), alpha = 0.3) +
+  theme_minimal() +
+  scale_fill_discrete(name = "Estimates", labels = c("MR", "VH", "Prior")) +
+  xlab("Altercentric Intrusion (std)")
+
+ggplot(posterior6) +
+  geom_density(aes(b_MR), fill="blue", alpha=0.2)+
+  geom_density(aes(b_VH), fill = "red", alpha = 0.2)+
+  geom_density(aes(prior_b), fill = "grey", alpha = 0.2)+
+  theme_minimal()+
+  ggtitle("ACI ~ 1 + Mindreading + VoiceHearing, All participants")
+
+print(model6)
+
+hypothesis(model6, c("MR > 0","MR < 0","MR = 0", "VH > 0" ,"VH < 0","VH = 0" ))
+```
+
+
+
+
+
+
